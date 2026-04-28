@@ -8,6 +8,7 @@ A production-ready Node.js API to send push notifications using Firebase Cloud M
 - **Firebase Admin SDK**: Secure and robust communication with FCM.
 - **Environment Driven**: Configuration via `.env` for security and flexibility.
 - **TypeScript**: Type-safe implementation with best practices.
+- **Web Push Test Endpoint**: Send or validate browser push notifications with FCM web tokens.
 
 ## Prerequisites
 
@@ -90,6 +91,39 @@ npm start
 }
 ```
 
+### Send Web Push Notification
+
+**Endpoint:** `POST /api/notifications/web-push/send`
+
+Use this endpoint to test browser push notifications. It accepts the same FCM registration token you get from the Firebase Web SDK.
+
+**Request Body:**
+```json
+{
+  "fcmToken": "WEB_DEVICE_TOKEN_HERE",
+  "title": "Web Push Title",
+  "body": "Web push message body",
+  "link": "https://example.com",
+  "icon": "https://example.com/icon.png",
+  "image": "https://example.com/banner.png",
+  "validateOnly": false,
+  "data": {
+    "source": "web"
+  }
+}
+```
+
+If `validateOnly` is set to `true`, Firebase validates the payload and token without delivering a real push notification.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "messageId": "projects/your-project-id/messages/0:1234567890abcdef",
+  "validated": false
+}
+```
+
 ## Project Structure
 
 ```text
@@ -105,4 +139,4 @@ npm start
 
 ## Security Note
 
-For production, it is highly recommended to add authentication (e.g., API keys or Bearer tokens) to the `/api/notifications/send` endpoint to prevent unauthorized usage.
+For production, it is highly recommended to add authentication (e.g., API keys or Bearer tokens) to both notification endpoints to prevent unauthorized usage.

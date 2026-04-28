@@ -10,4 +10,11 @@ const router = Router();
  */
 router.post('/send', notificationController.send);
 
+/**
+ * @route POST /api/notifications/web-push/send
+ * @desc Send or validate a web push notification via FCM
+ * @access Public (Consider adding API key or Auth middleware for production)
+ */
+router.post('/web-push/send', notificationController.sendWebPush);
+
 export default router;
