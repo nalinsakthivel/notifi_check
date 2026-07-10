@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { StatusBar } from "@/components/status-bar";
+import { DevtoolsGuard } from "@/components/devtools-guard";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -97,6 +98,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <DevtoolsGuard />
         <StatusBar />
         {children}
         <Analytics />

@@ -44,6 +44,11 @@ export default function Home() {
         </p>
       </div>
 
+      <div className="rounded-md border border-dashed border-border bg-panel px-4 py-3 text-xs text-mute">
+        <span className="text-accent">COMING SOON</span> — App Icon Generator and Privacy Policy
+        Generator. More free dev tools are on the way.
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {[
           { id: "send", label: "SEND" },
