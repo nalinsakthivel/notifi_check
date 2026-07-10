@@ -65,6 +65,34 @@ export default function Home() {
 
       {tab === "send" && <SendForm mode="send" />}
       {tab === "webpush" && <SendForm mode="webpush" />}
+
+      <section className="rounded-md border border-border bg-panel px-6 py-6 text-sm text-mute">
+        <h2 className="text-xs tracking-widest text-foreground">ABOUT</h2>
+        <p className="mt-3">
+          Notifi Check is a free tool for testing Firebase Cloud Messaging (FCM) push
+          notifications without writing any code. Paste a device or web-push token, upload your
+          Firebase service account JSON, and send a real notification straight from the browser —
+          useful for confirming that a Firebase project, token, or web-push configuration actually
+          works before wiring it into an app.
+        </p>
+        <h2 className="mt-5 text-xs tracking-widest text-foreground">WHY TEST FCM DIRECTLY</h2>
+        <p className="mt-3">
+          Push notification bugs are hard to isolate inside a full app — is the token stale, is
+          the service account misconfigured, is the payload malformed, or is FCM itself
+          unreachable? Sending a notification directly, outside your app code, narrows that down
+          in one request. The <span className="text-foreground">WEB_PUSH</span> tab also supports
+          a validate-only dry run, so you can check a payload is well-formed without actually
+          delivering it.
+        </p>
+        <h2 className="mt-5 text-xs tracking-widest text-foreground">HOW IT WORKS</h2>
+        <p className="mt-3">
+          Your Firebase service account JSON is read once from the upload for that single request,
+          used to create a short-lived Firebase Admin instance, and discarded immediately after —
+          it is never written to disk, logged, or stored server-side. Get a service account key
+          from your Firebase project under Project Settings → Service Accounts → Generate new
+          private key.
+        </p>
+      </section>
     </main>
   );
 }

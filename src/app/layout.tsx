@@ -51,11 +51,36 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 export const viewport: Viewport = {
   themeColor: "#050608",
   colorScheme: "dark",
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "Notifi Check",
+  alternateName: "FCM Push Notification Tester",
+  description,
+  url: siteUrl,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Any (web-based)",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  featureList: [
+    "Send FCM data and notification messages",
+    "Send web push messages with icon, image, and link",
+    "Validate-only dry run for web push",
+    "No server-side storage of credentials",
+  ],
 };
 
 export default function RootLayout({
@@ -65,6 +90,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistMono.variable} h-full antialiased`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <StatusBar />
         {children}
