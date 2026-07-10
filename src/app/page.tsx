@@ -5,11 +5,41 @@ import Link from "next/link";
 import { SendForm } from "@/components/send-form";
 import { OneSignalForm } from "@/components/onesignal-form";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "Notifi Check",
+  alternateName: "FCM & OneSignal Push Notification Tester",
+  description:
+    "Free FCM & OneSignal push notification tester. Send a real test push in seconds — no signup, nothing stored server-side.",
+  url: siteUrl,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Any (web-based)",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  featureList: [
+    "Send FCM data and notification messages",
+    "Send web push messages with icon, image, and link",
+    "Send OneSignal push notifications via REST API",
+    "Validate-only dry run for web push",
+    "No server-side storage of credentials",
+  ],
+};
+
 export default function Home() {
   const [tab, setTab] = useState<"send" | "webpush" | "onesignal">("send");
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="rounded-md border border-border bg-panel px-6 py-6">
         <div className="flex items-center gap-2.5">
           <svg width="26" height="26" viewBox="0 0 72 72" fill="none" className="shrink-0 text-foreground">
@@ -128,7 +158,23 @@ export default function Home() {
           </Link>{" "}
           if you need help. For OneSignal, your App ID and REST API key are sent once per request
           directly to the OneSignal API and never stored — find both under Settings → Keys & IDs
-          in your OneSignal dashboard.
+          in your OneSignal dashboard, or see the{" "}
+          <Link href="/guide/onesignal-app-id-and-rest-api-key" className="text-accent underline">
+            OneSignal setup guide
+          </Link>
+          .
+        </InfoBlock>
+
+        <InfoBlock title="MORE GUIDES">
+          Hitting an FCM error? Check the{" "}
+          <Link href="/guide/fcm-error-codes" className="text-accent underline">
+            FCM error code reference
+          </Link>{" "}
+          for what each one means and how to fix it. Deciding between providers? See{" "}
+          <Link href="/guide/fcm-vs-onesignal" className="text-accent underline">
+            FCM vs OneSignal
+          </Link>
+          .
         </InfoBlock>
       </section>
     </main>

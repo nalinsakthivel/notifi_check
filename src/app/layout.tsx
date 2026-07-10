@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { StatusBar } from "@/components/status-bar";
+import { Footer } from "@/components/footer";
 import { DevtoolsGuard } from "@/components/devtools-guard";
 import "./globals.css";
 
@@ -13,7 +14,7 @@ const geistMono = Geist_Mono({
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const title = "Notifi Check — FCM & OneSignal Push Notification Tester";
 const description =
-  "Send test push notifications through Firebase Cloud Messaging (FCM) or OneSignal. Upload a service account or paste a REST API key, fire a data, web-push, or OneSignal message, and see the result — nothing is stored server-side.";
+  "Free FCM & OneSignal push notification tester. Send a real test push in seconds — no signup, nothing stored server-side.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -67,29 +68,6 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: "Notifi Check",
-  alternateName: "FCM & OneSignal Push Notification Tester",
-  description,
-  url: siteUrl,
-  applicationCategory: "DeveloperApplication",
-  operatingSystem: "Any (web-based)",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-  },
-  featureList: [
-    "Send FCM data and notification messages",
-    "Send web push messages with icon, image, and link",
-    "Send OneSignal push notifications via REST API",
-    "Validate-only dry run for web push",
-    "No server-side storage of credentials",
-  ],
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -97,16 +75,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistMono.variable} h-full antialiased`}>
-      <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <DevtoolsGuard />
         <StatusBar />
         {children}
+        <Footer />
         <Analytics />
       </body>
     </html>
