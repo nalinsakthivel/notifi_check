@@ -11,9 +11,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const title = "Notifi Check — FCM Push Notification Tester";
+const title = "Notifi Check — FCM & OneSignal Push Notification Tester";
 const description =
-  "Send test push notifications through Firebase Cloud Messaging. Upload a service account, fire a data or web-push message, and see the result — nothing is stored server-side.";
+  "Send test push notifications through Firebase Cloud Messaging (FCM) or OneSignal. Upload a service account or paste a REST API key, fire a data, web-push, or OneSignal message, and see the result — nothing is stored server-side.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -26,6 +26,11 @@ export const metadata: Metadata = {
   keywords: [
     "FCM",
     "Firebase Cloud Messaging",
+    "Firebase push notification",
+    "Firebase push notification tester",
+    "send Firebase push notification",
+    "OneSignal",
+    "OneSignal push notification tester",
     "push notification tester",
     "web push",
     "notification testing tool",
@@ -66,7 +71,7 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
   name: "Notifi Check",
-  alternateName: "FCM Push Notification Tester",
+  alternateName: "FCM & OneSignal Push Notification Tester",
   description,
   url: siteUrl,
   applicationCategory: "DeveloperApplication",
@@ -79,6 +84,7 @@ const jsonLd = {
   featureList: [
     "Send FCM data and notification messages",
     "Send web push messages with icon, image, and link",
+    "Send OneSignal push notifications via REST API",
     "Validate-only dry run for web push",
     "No server-side storage of credentials",
   ],
