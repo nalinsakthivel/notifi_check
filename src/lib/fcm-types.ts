@@ -17,4 +17,5 @@ export interface FCMResponse {
   messageId?: string;
   validated?: boolean;
   error?: string;
+  errorCode?: string;
 }

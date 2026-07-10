@@ -1,142 +1,55 @@
-# FCM Notification API
+# Notifi Check
 
-A production-ready Node.js API to send push notifications using Firebase Cloud Messaging (FCM).
+FCM Push Notification Tester — a single-page Next.js app to send test push notifications via
+Firebase Cloud Messaging. Upload a Firebase service account JSON, fire a data/notification or
+web-push message, and see the result. The credential is used once per request and never stored
+or logged on the server.
+
+Live at **[notifi-check.vercel.app](https://notifi-check.vercel.app)**.
 
 ## Features
 
-- **Express.js API**: Seamless integration with existing backend or frontend.
-- **Firebase Admin SDK**: Secure and robust communication with FCM.
-- **Environment Driven**: Configuration via `.env` for security and flexibility.
-- **TypeScript**: Type-safe implementation with best practices.
-- **Web Push Test Endpoint**: Send or validate browser push notifications with FCM web tokens.
+- **Two send modes** — plain FCM `data`/`notification` messages, or web-push messages with
+  icon/image/link and a `validateOnly` dry-run.
+- **Stateless by design** — the service account is read once from the upload, used to build a
+  throwaway Firebase Admin app, and discarded (`deleteApp` runs even on error).
+- **Live status bar** — uptime clock, visitor count (Upstash Redis), and an FCM up/down indicator
+  derived from your last send result this session.
 
-## Prerequisites
+## Getting started
 
-- Node.js (version 20+ recommended)
-- A Firebase Project
-- A service account key JSON file from Firebase Console
-
-## Setup Instructions
-
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Configure Environment Variables**
-   Create a `.env` file in the root directory (copy from below):
-   ```env
-   PORT=3000
-   FIREBASE_PROJECT_ID=your-project-id
-   FIREBASE_SERVICE_ACCOUNT_PATH=./path/to/your/serviceAccountKey.json
-   ```
-
-3. **Add Firebase Service Account**
-   Place your Firebase service account JSON file in the project (e.g., in a `firebase_json` folder) and ensure the path in `.env` matches.
-
-## Running the API
-
-### Development Mode
 ```bash
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-### Production Mode
-```bash
-npm start
-```
+Open [http://localhost:3000](http://localhost:3000). You'll need a Firebase project with Cloud
+Messaging enabled and a service account JSON (Project Settings → Service Accounts → Generate new
+private key) to actually send a test push.
 
-## API Usage
+## Commands
 
-### Send Push Notification
+- `pnpm dev` — start the dev server (Turbopack)
+- `pnpm build` — production build
+- `pnpm start` — run the production build
+- `pnpm lint` — ESLint
 
-**Endpoint:** `POST /api/notifications/send`
+## Environment variables
 
-**Content-Type:** `application/json`
+| Variable | Purpose | Required |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Base URL used for OpenGraph/canonical metadata | For production deploys |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Upstash Redis, used for the visitor counter | For the visitor counter to work |
 
-**Request Body:**
-```json
-{
-  "fcmToken": "DEVICE_TOKEN_HERE",
-  "title": "Notification Title",
-  "body": "Notification message body",
-  "data": {
-    "key1": "value1",
-    "key2": "value2"
-  }
-}
-```
+None of these are required to send a test push — that flow only needs the service account JSON
+uploaded through the form each time.
 
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "messageId": "projects/your-project-id/messages/0:1234567890abcdef"
-}
-```
+## Architecture
 
-**Error Response (400 Bad Request):**
-```json
-{
-  "success": false,
-  "error": "Missing required fields: fcmToken, title, and body are required."
-}
-```
+See [CLAUDE.md](CLAUDE.md) for the full request pipeline and module breakdown.
 
-**Error Response (500 Internal Server Error):**
-```json
-{
-  "success": false,
-  "error": "Detailed error message from Firebase..."
-}
-```
+## Deployment
 
-### Send Web Push Notification
-
-**Endpoint:** `POST /api/notifications/web-push/send`
-
-Use this endpoint to test browser push notifications. It accepts the same FCM registration token you get from the Firebase Web SDK.
-
-**Request Body:**
-```json
-{
-  "fcmToken": "WEB_DEVICE_TOKEN_HERE",
-  "title": "Web Push Title",
-  "body": "Web push message body",
-  "link": "https://example.com",
-  "icon": "https://example.com/icon.png",
-  "image": "https://example.com/banner.png",
-  "validateOnly": false,
-  "data": {
-    "source": "web"
-  }
-}
-```
-
-If `validateOnly` is set to `true`, Firebase validates the payload and token without delivering a real push notification.
-
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "messageId": "projects/your-project-id/messages/0:1234567890abcdef",
-  "validated": false
-}
-```
-
-## Project Structure
-
-```text
-/src
-  /config       # Firebase initialization
-  /controllers  # HTTP request handling
-  /services     # FCM business logic
-  /routes       # API route definitions
-  /types        # TypeScript interfaces
-  app.ts        # Express app configuration
-  server.ts     # Server entry point
-```
-
-## Security Note
-
-For production, it is highly recommended to add authentication (e.g., API keys or Bearer tokens) to both notification endpoints to prevent unauthorized usage.
+Deployed on [Vercel](https://vercel.com). Pushing to the connected branch triggers a deploy
+automatically; the visitor counter needs an Upstash Redis integration wired up in the Vercel
+project for `KV_REST_API_URL`/`KV_REST_API_TOKEN` to exist.

@@ -1,0 +1,11 @@
+allowBuilds:
+  '@firebase/util': true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@firebase/app-compat@0.5.15'
+  - '@firebase/app@0.15.1'
+  - '@firebase/remote-config-compat@0.2.27'
+  - '@firebase/remote-config@0.9.0'
+  - firebase@12.16.0
