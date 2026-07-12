@@ -26,6 +26,34 @@ const tools = [
   },
 ];
 
+const comingSoon = [
+  {
+    label: "DEEP_LINK_TESTER",
+    description:
+      "Paste a URL scheme or App Link, generate a QR code, and validate assetlinks.json / apple-app-site-association by fetching and lint-checking them.",
+  },
+  {
+    label: "APK_AAB_ANALYZER",
+    description:
+      "Drag in an APK — package name, version, min/target SDK, permissions, signing cert SHA-256, and a size breakdown.",
+  },
+  {
+    label: "STORE_ASSET_RESIZER",
+    description:
+      "Upload screenshots and resize them to Play Store and App Store required dimensions, export as a ZIP.",
+  },
+  {
+    label: "DATA_SAFETY_FORM_HELPER",
+    description:
+      "Answer once, get the responses for Google Play's Data Safety section — built on the same data catalog as the privacy policy generator.",
+  },
+  {
+    label: "FCM_PAYLOAD_BUILDER",
+    description:
+      "A visual builder for the full FCM message JSON (android/apns/webpush blocks, priority, TTL, collapse keys) with cURL/Node/Flutter export.",
+  },
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -131,6 +159,26 @@ export default function Home() {
         ))}
 
       </nav>
+
+      <section aria-label="Coming soon" className="flex flex-col gap-3">
+        <h2 className="px-1 text-xs tracking-widest text-mute">COMING_SOON</h2>
+        {comingSoon.map((t) => (
+          <div
+            key={t.label}
+            className="rounded-md border border-dashed border-border/60 px-5 py-4"
+          >
+            <div className="flex items-center gap-3">
+              <span className="shrink-0 rounded-sm border border-mute/40 px-1.5 py-0.5 text-[10px] font-semibold tracking-widest text-mute">
+                soon
+              </span>
+              <span className="min-w-0 text-sm tracking-widest text-mute wrap-anywhere">
+                {t.label}
+              </span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-mute/70">{t.description}</p>
+          </div>
+        ))}
+      </section>
 
       <section className="rounded-md border border-border bg-panel px-6 py-6">
         <div className="border-l-2 border-border pl-4">
