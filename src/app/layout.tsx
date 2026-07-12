@@ -1,9 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { StatusBar } from "@/components/status-bar";
-import { Footer } from "@/components/footer";
-import { DevtoolsGuard } from "@/components/devtools-guard";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -12,9 +9,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const title = "Notifi Check — FCM & OneSignal Push Notification Tester";
+const title = "Notifi Check — Free Developer Tools for App Builders";
 const description =
-  "Free FCM & OneSignal push notification tester. Send a real test push in seconds — no signup, nothing stored server-side.";
+  "Free developer tools: FCM & OneSignal push notification tester and Android privacy policy generator. No signup, nothing stored server-side.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -35,6 +32,9 @@ export const metadata: Metadata = {
     "push notification tester",
     "web push",
     "notification testing tool",
+    "privacy policy generator",
+    "android app privacy policy",
+    "free developer tools",
   ],
   authors: [{ name: "Notifi Check" }],
   alternates: {
@@ -76,10 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <DevtoolsGuard />
-        <StatusBar />
         {children}
-        <Footer />
         <Analytics />
       </body>
     </html>

@@ -1,10 +1,14 @@
 import Link from "next/link";
 
 const links = [
+  { href: "/push-notification-tester", label: "PUSH_TESTER" },
+  { href: "/privacy-policy-generator", label: "PRIVACY_POLICY_GENERATOR" },
+  { href: "/app-icon-generator", label: "APP_ICON_GENERATOR" },
   { href: "/guide/firebase-service-account", label: "FIREBASE_SETUP" },
   { href: "/guide/onesignal-app-id-and-rest-api-key", label: "ONESIGNAL_SETUP" },
   { href: "/guide/fcm-error-codes", label: "FCM_ERROR_CODES" },
   { href: "/guide/fcm-vs-onesignal", label: "FCM_VS_ONESIGNAL" },
+  { href: "/feedback", label: "FEEDBACK" },
 ];
 
 export function Footer() {

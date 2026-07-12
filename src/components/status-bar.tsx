@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { onFcmStatusChange, readFcmStatus, type FcmStatus } from "@/lib/fcm-status";
+import Link from "next/link";
 
 function formatUptime(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -12,26 +12,9 @@ function formatUptime(seconds: number) {
 
 const VISIT_COUNTED_KEY = "notifi_check_visit_counted";
 
-const statusLabel: Record<FcmStatus, string> = {
-  unknown: "FCM ?",
-  up: "FCM UP",
-  down: "FCM DOWN",
-};
-
-const statusColor: Record<FcmStatus, string> = {
-  unknown: "text-mute",
-  up: "text-live",
-  down: "text-red-400",
-};
-
 export function StatusBar() {
   const [uptime, setUptime] = useState(0);
   const [visits, setVisits] = useState<number | null>(null);
-  const [fcmStatus, setFcmStatus] = useState<FcmStatus>(() =>
-    typeof window === "undefined" ? "unknown" : readFcmStatus()
-  );
-
-  useEffect(() => onFcmStatusChange(setFcmStatus), []);
 
   useEffect(() => {
     const start = Date.now();
@@ -56,18 +39,12 @@ export function StatusBar() {
 
   return (
     <div className="flex items-center justify-between border-b border-border px-4 py-2 text-xs tracking-widest text-mute">
-      <span>SYS.NOTIFI</span>
+      <Link href="/" className="transition-colors hover:text-foreground">
+        SYS.NOTIFI
+      </Link>
       <span className="tabular-nums">UPTIME {formatUptime(uptime)}</span>
       <span className="tabular-nums">
         VISITORS {visits === null ? "—" : visits.toLocaleString()}
-      </span>
-      <span className={`flex items-center gap-1.5 ${statusColor[fcmStatus]}`}>
-        <span
-          className={`inline-block h-1.5 w-1.5 rounded-full ${
-            fcmStatus === "up" ? "bg-live" : fcmStatus === "down" ? "bg-red-400" : "bg-mute"
-          }`}
-        />
-        {statusLabel[fcmStatus]}
       </span>
       <span className="flex items-center gap-1.5 text-live">
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-live" />

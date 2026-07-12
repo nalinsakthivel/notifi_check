@@ -14,7 +14,7 @@ const jsonLd = {
   alternateName: "FCM & OneSignal Push Notification Tester",
   description:
     "Free FCM & OneSignal push notification tester. Send a real test push in seconds — no signup, nothing stored server-side.",
-  url: siteUrl,
+  url: `${siteUrl}/push-notification-tester`,
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Any (web-based)",
   offers: {
@@ -86,7 +86,7 @@ export default function Home() {
         <span className="shrink-0 rounded-sm bg-accent px-1.5 py-0.5 font-semibold tracking-widest text-background">
           i
         </span>
-        <span className="text-mute">
+        <span className="min-w-0 wrap-anywhere text-mute">
           <span className="tracking-widest text-foreground">NEED_A_SERVICE_ACCOUNT_JSON</span> —
           step-by-step guide to generate one from Firebase
         </span>
@@ -95,14 +95,21 @@ export default function Home() {
         </span>
       </Link>
 
-      <div className="flex items-center gap-3 rounded-md border border-border/60 px-4 py-3 text-xs text-mute/70">
-        <span className="shrink-0 rounded-sm border border-mute/40 px-1.5 py-0.5 tracking-widest text-mute/70">
-          soon
+      <Link
+        href="/privacy-policy-generator"
+        className="group flex items-center gap-3 rounded-md border border-live/60 bg-live/6 px-4 py-3 text-xs transition-colors hover:bg-live/12"
+      >
+        <span className="shrink-0 rounded-sm bg-live px-1.5 py-0.5 font-semibold tracking-widest text-background">
+          new
         </span>
-        <span>
-          App Icon Generator and Privacy Policy Generator — more free dev tools on the way.
+        <span className="min-w-0 wrap-anywhere text-mute">
+          <span className="tracking-widest text-foreground">PRIVACY_POLICY_GENERATOR</span> —
+          free Google Play–ready privacy policies for Android apps
         </span>
-      </div>
+        <span className="ml-auto shrink-0 text-live transition-transform group-hover:translate-x-0.5">
+          →
+        </span>
+      </Link>
 
       <div className="flex flex-wrap gap-2">
         {[
