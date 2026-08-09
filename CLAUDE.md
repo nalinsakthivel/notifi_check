@@ -18,12 +18,24 @@ Router site:
 - **App Icon Generator** (`/app-icon-generator`) — upload one image, get a ZIP with every icon
   size for Android/iOS/Web-PWA/macOS/Windows. Entirely client-side (Canvas API + `fflate`); the
   image never leaves the browser.
+- **Deep Link Tester** (`/deep-link-tester`) — parse a URL scheme or App Link, generate a QR code,
+  and lint-check `assetlinks.json` / `apple-app-site-association`. Entirely client-side.
+- **APK/AAB Analyzer** (`/apk-aab-analyzer`) — drag in an APK or AAB, parses the binary-XML
+  manifest, permissions, signing cert, and size breakdown client-side; the file never leaves the
+  browser.
+- **Store Asset Resizer** (`/store-asset-resizer`) — resize screenshots to Play Store / App Store
+  dimensions, export as a ZIP. Entirely client-side.
+- **Data Safety Form Helper** (`/data-safety-form-helper`) — a worksheet for Google Play's Data
+  Safety section, built on the same data catalog as the privacy policy generator. Entirely
+  client-side.
+- **FCM Payload Builder** (`/fcm-payload-builder`) — visually build the FCM HTTP v1 message JSON,
+  export as cURL/Node.js/Flutter. Entirely client-side.
 - **Feedback** (`/feedback`) — a form + floating action button (visible on every page) that emails
   the developer via Resend, with an optional screenshot attachment.
 
-Shared invariant across all four tools: nothing sensitive is persisted server-side. The push
-tester's credentials are used once and discarded; the policy and icon generators never call a
-server at all.
+Shared invariant across every tool: nothing sensitive is persisted server-side. The push tester's
+credentials are used once and discarded; every other tool either never calls a server at all, or
+(feedback) only sends what the user explicitly submits.
 
 ## Commands
 
@@ -62,6 +74,11 @@ All tool/guide pages live under `src/app/(notifi)/`:
 | `/privacy-policy-generator` | SEO/marketing landing page for the policy generator. |
 | `/privacy-policy-generator/app` | The actual 7-step generator (`PolicyGenerator`). |
 | `/app-icon-generator` | Landing + tool combined on one page (`IconGenerator`). |
+| `/deep-link-tester` | Landing + tool combined on one page (`DeepLinkTester`). |
+| `/apk-aab-analyzer` | Landing + tool combined on one page (`ApkAnalyzer`). |
+| `/store-asset-resizer` | Landing + tool combined on one page (`StoreAssetResizer`). |
+| `/data-safety-form-helper` | Landing + tool combined on one page (`DataSafetyHelper`). |
+| `/fcm-payload-builder` | Landing + tool combined on one page (`FcmPayloadBuilder`). |
 | `/feedback` | Feedback form (`noindex`). |
 | `/guide/*` | Four standalone reference/how-to pages (FCM error codes, FCM vs OneSignal, Firebase service account setup, OneSignal App ID/REST key setup). |
 
@@ -193,7 +210,7 @@ and [src/components/icon/generator.tsx](src/components/icon/generator.tsx):
 - [src/app/api/feedback/send/route.ts](src/app/api/feedback/send/route.ts) — Node runtime route.
   Reads `multipart/form-data` (`message`, `email`, `page`, `screenshot`), validates message
   required + email regex + screenshot is an image ≤5MB, then sends via **Resend**
-  (`RESEND_API_KEY`). Sent `to` a hardcoded address, with `replyTo` set to the submitter's email
+  (`RESEND_API_KEY`). Sent `to` `FEEDBACK_TO_EMAIL`, with `replyTo` set to the submitter's email
   if given, and the screenshot passed as a Resend `attachments` entry. The `from` address has a
   `TODO` to switch once a custom sending domain verifies in Resend.
 - [src/components/feedback-form.tsx](src/components/feedback-form.tsx) — client form building a
@@ -227,7 +244,7 @@ and [src/components/icon/generator.tsx](src/components/icon/generator.tsx):
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | root layout, `robots.ts`, `sitemap.ts`, every tool's `page.tsx` | Correct canonical/OG URLs in production |
 | `GOOGLE_SITE_VERIFICATION` | root layout | Search Console verification |
-| `RESEND_API_KEY` | `src/app/api/feedback/send/route.ts` | Feedback emails to send at all |
+| `RESEND_API_KEY` / `FEEDBACK_TO_EMAIL` | `src/app/api/feedback/send/route.ts` | Feedback emails to send at all |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | `src/lib/redis.ts` | Visitor counter in the StatusBar |
 
 None of these are required for the push tester, policy generator, or icon generator to function —

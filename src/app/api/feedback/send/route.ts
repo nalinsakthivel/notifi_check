@@ -3,7 +3,6 @@ import { Resend } from "resend";
 
 export const runtime = "nodejs";
 
-const FEEDBACK_TO = "nalinsakthivel.dev@gmail.com";
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 function escapeHtml(text: string): string {
@@ -17,8 +16,9 @@ function escapeHtml(text: string): string {
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      console.error("RESEND_API_KEY is not configured");
+    const feedbackTo = process.env.FEEDBACK_TO_EMAIL;
+    if (!apiKey || !feedbackTo) {
+      console.error("RESEND_API_KEY / FEEDBACK_TO_EMAIL is not configured");
       return NextResponse.json(
         { success: false, error: "Feedback is not configured on this server." },
         { status: 500 }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const result = await resend.emails.send({
       // TODO: switch to feedback@notificheck.com once the domain shows Verified in Resend.
       from: "Notifi Check Feedback <onboarding@resend.dev>",
-      to: FEEDBACK_TO,
+      to: feedbackTo,
       replyTo: typeof email === "string" && email ? email : undefined,
       subject: "New feedback — Notifi Check",
       html,
