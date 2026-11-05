@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { ApkAnalyzer } from "@/components/apk-analyzer/analyzer";
 
-const title = "APK/AAB Analyzer — Inspect Android Package Manifest & Size, Free";
+const title =
+  "APK/AAB Analyzer — Inspect Android Package Manifest & Size, Free";
 const description =
   "Drop in an .apk or .aab and inspect its manifest (package, version, SDK, permissions), signing info, and a size breakdown by category — entirely in your browser, nothing uploaded.";
 
@@ -25,7 +26,14 @@ export const metadata: Metadata = {
     title,
     description,
     siteName: "Notifi Check",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Notifi Check" }],
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Notifi Check",
+      },
+    ],
   },
   twitter: { card: "summary_large_image", title, description },
 };
@@ -37,7 +45,7 @@ const features = [
   },
   {
     title: "SIGNING_INFO",
-    body: "Detects META-INF/*.RSA, .DSA, or .EC signature files and, when the certificate bytes can be confidently isolated, computes a SHA-256 fingerprint. No fingerprint is ever shown unless it's been computed correctly.",
+    body: "Detects legacy v1 signature material and modern v2/v3 signing-block IDs. Extracts a certificate SHA-256 where structurally readable. Detection and certificate extraction are not cryptographic verification; missing legacy files never means an APK is unsigned.",
   },
   {
     title: "SIZE_BREAKDOWN",
@@ -64,7 +72,7 @@ const faq = [
   },
   {
     q: "Why isn't there always a certificate SHA-256 fingerprint?",
-    a: "Computing it correctly requires locating the exact DER bytes of the X.509 certificate inside a PKCS#7 signature block. When that can be done confidently, a real SHA-256 is shown. When it can't, this tool says so explicitly instead of risking a wrong fingerprint.",
+    a: "A fingerprint requires exact DER certificate bytes from a supported PKCS#7 or APK signing block. Ambiguous or malformed structures are reported as unknown. Signatures are not cryptographically verified. Local or upload certificates may differ from the Play App Signing distribution certificate.",
   },
   {
     q: "Why is AAB manifest parsing more limited than APK?",
@@ -72,7 +80,7 @@ const faq = [
   },
   {
     q: "What counts as 'Native libraries' in the size breakdown?",
-    a: "Everything under lib/, broken out per ABI folder (armeabi-v7a, arm64-v8a, x86, x86_64) so you can see which architectures are inflating your package size.",
+    a: "Entries under lib/ or AAB module lib/ paths, broken out per ABI folder (armeabi-v7a, arm64-v8a, x86, x86_64) so you can see which architectures are inflating your package size.",
   },
 ];
 
@@ -84,7 +92,12 @@ const jsonLd = {
     {
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Notifi Check", item: siteUrl },
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Notifi Check",
+          item: siteUrl,
+        },
         {
           "@type": "ListItem",
           position: 2,
@@ -115,7 +128,7 @@ const jsonLd = {
 
 export default function ApkAabAnalyzerPage() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10 wrap-anywhere">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -126,10 +139,13 @@ export default function ApkAabAnalyzerPage() {
         <span className="text-xs tracking-widest text-mute">
           FREE · NO_SIGNUP · RUNS_IN_YOUR_BROWSER
         </span>
-        <h1 className="mt-3 text-xl font-semibold tracking-tight">APK/AAB Analyzer</h1>
+        <h1 className="mt-3 text-xl font-semibold tracking-tight">
+          APK/AAB Analyzer
+        </h1>
         <p className="mt-1 text-sm leading-relaxed text-mute">
-          Drop in an .apk or .aab and get its manifest details, signing info, and a size breakdown
-          by category — parsed entirely in your browser, nothing ever uploaded.
+          Drop in an .apk or .aab and get its manifest details, signing info,
+          and a size breakdown by category — parsed entirely in your browser,
+          nothing ever uploaded.
         </p>
       </div>
 
@@ -143,12 +159,17 @@ export default function ApkAabAnalyzerPage() {
         aria-labelledby="features-heading"
         className="flex flex-col gap-5 rounded-md border border-border bg-panel px-6 py-6"
       >
-        <h2 id="features-heading" className="text-xs tracking-widest text-foreground">
+        <h2
+          id="features-heading"
+          className="text-xs tracking-widest text-foreground"
+        >
           WHAT_YOU_GET
         </h2>
         {features.map((f) => (
           <div key={f.title} className="border-l-2 border-border pl-4">
-            <h3 className="min-w-0 text-xs tracking-widest text-accent wrap-anywhere">{f.title}</h3>
+            <h3 className="min-w-0 text-xs tracking-widest text-accent wrap-anywhere">
+              {f.title}
+            </h3>
             <p className="mt-2 text-sm leading-relaxed text-mute">{f.body}</p>
           </div>
         ))}
@@ -159,15 +180,24 @@ export default function ApkAabAnalyzerPage() {
         aria-labelledby="faq-heading"
         className="flex flex-col gap-3 rounded-md border border-border bg-panel px-6 py-6"
       >
-        <h2 id="faq-heading" className="mb-2 text-xs tracking-widest text-foreground">
+        <h2
+          id="faq-heading"
+          className="mb-2 text-xs tracking-widest text-foreground"
+        >
           FAQ
         </h2>
         {faq.map((f) => (
-          <details key={f.q} className="group rounded-md border border-border open:border-accent/60">
+          <details
+            key={f.q}
+            className="group rounded-md border border-border open:border-accent/60"
+          >
             <summary className="cursor-pointer list-none px-4 py-3 text-sm text-foreground marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="flex items-center justify-between gap-4">
                 {f.q}
-                <span aria-hidden="true" className="shrink-0 text-mute transition-transform group-open:rotate-45">
+                <span
+                  aria-hidden="true"
+                  className="shrink-0 text-mute transition-transform group-open:rotate-45"
+                >
                   +
                 </span>
               </span>

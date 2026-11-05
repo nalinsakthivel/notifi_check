@@ -1,7 +1,9 @@
-import { unzipSync } from "fflate";
-import { parseApkManifest, type ManifestInfo } from "./manifest";
-import { analyzeSignature, type SignatureInfo } from "./cert";
-import { buildSizeBreakdown, type SizeCategory } from "./size-breakdown";
+import { readSigningBlock } from "./signing-block.ts";
+import { readArchive } from "./archive.ts";
+import type { AnalysisLimits } from "./limits.ts";
+import { parseApkManifest, type ManifestInfo } from "./manifest.ts";
+import { analyzeSignature, type SignatureInfo } from "./cert.ts";
+import { buildSizeBreakdown, type SizeCategory } from "./size-breakdown.ts";
 
 export type PackageFormat = "apk" | "aab" | "unknown";
 
@@ -21,7 +23,9 @@ export interface AnalyzeResult {
 
 function detectFormat(paths: string[]): PackageFormat {
   const hasBundleConfig = paths.includes("BundleConfig.pb");
-  const hasBaseManifest = paths.some((p) => p === "base/manifest/AndroidManifest.xml");
+  const hasBaseManifest = paths.some(
+    (p) => p === "base/manifest/AndroidManifest.xml",
+  );
   if (hasBundleConfig || hasBaseManifest) return "aab";
   if (paths.includes("AndroidManifest.xml")) return "apk";
   return "unknown";
@@ -30,6 +34,7 @@ function detectFormat(paths: string[]): PackageFormat {
 function topLevelModules(paths: string[]): string[] {
   const set = new Set<string>();
   for (const p of paths) {
+    if (!p.endsWith("/manifest/AndroidManifest.xml")) continue;
     const first = p.split("/")[0];
     if (first && first !== p && !first.startsWith("META-INF")) set.add(first);
   }
@@ -41,56 +46,40 @@ function topLevelModules(paths: string[]): string[] {
  * Every stage is isolated so a failure in one (bad manifest, unreadable
  * signature block, …) still leaves the rest of the result usable.
  */
-export async function analyzePackage(fileName: string, bytes: Uint8Array): Promise<AnalyzeResult> {
+export async function analyzePackage(
+  fileName: string,
+  input: Blob | Uint8Array,
+  limits: Partial<AnalysisLimits> = {},
+  progress?: (stage: "Reading" | "Analyzing") => void,
+): Promise<AnalyzeResult> {
+  progress?.("Reading");
+  const archive = await readArchive(
+    input instanceof Blob ? input : new Blob([new Uint8Array(input)]),
+    limits,
+  );
+  progress?.("Analyzing");
   const warnings: string[] = [];
-
-  // Pass 1: list every entry's metadata without inflating anything, so we can
-  // compute size breakdown and detect format cheaply even for huge APKs.
-  const allEntries: { path: string; compressedSize: number; uncompressedSize: number }[] = [];
-  // Pass 2: content we actually need — manifest + signature files — collected
-  // via the same filter callback so we only inflate what's necessary.
-  const wantedNames = new Set<string>();
-
-  try {
-    // First lightweight pass: filter always returns false, just to enumerate
-    // entries (fflate still calls the filter for every central-directory entry,
-    // and size/originalSize come from the central directory — no inflation happens).
-    unzipSync(bytes, {
-      filter(file) {
-        allEntries.push({
-          path: file.name,
-          compressedSize: file.size,
-          uncompressedSize: file.originalSize,
-        });
-        return false;
-      },
-    });
-  } catch (e) {
-    throw new Error(
-      e instanceof Error && /invalid zip/i.test(e.message)
-        ? "This doesn't look like a valid APK/AAB — the file isn't a readable ZIP archive."
-        : "Could not read this file as a ZIP archive.",
-    );
-  }
-
+  const allEntries = archive.entries;
   const paths = allEntries.map((e) => e.path);
   const format = detectFormat(paths);
-
-  if (format === "apk" && paths.includes("AndroidManifest.xml")) {
-    wantedNames.add("AndroidManifest.xml");
-  }
-  const sigCandidates = paths.filter((p) => /^META-INF\/[^/]+\.(RSA|DSA|EC)$/i.test(p));
-  for (const name of sigCandidates) wantedNames.add(name);
-
-  let extracted: Record<string, Uint8Array> = {};
-  if (wantedNames.size > 0) {
-    try {
-      extracted = unzipSync(bytes, { filter: (file) => wantedNames.has(file.name) });
-    } catch {
-      warnings.push("Could not extract manifest/signature contents from this archive.");
-    }
-  }
-
+  const sigCandidates =
+    format === "apk"
+      ? paths.filter((p) => /^META-INF\/[^/]+\.(RSA|DSA|EC)$/i.test(p))
+      : [];
+  if (sigCandidates.length > 64)
+    throw new Error("Too many signature entries: the safety limit is 64.");
+  const wantedNames = new Set([
+    ...sigCandidates,
+    ...(format === "apk" ? ["AndroidManifest.xml"] : []),
+  ]);
+  const extracted: Record<string, Uint8Array> = Object.create(null);
+  for (const entry of allEntries)
+    if (wantedNames.has(entry.path))
+      extracted[entry.path] = await archive.readEntry(entry);
+  if (!paths.includes("AndroidManifest.xml") && format !== "aab")
+    warnings.push(
+      "No AndroidManifest.xml found at the ZIP root; this may not be an APK.",
+    );
   const sizeBreakdown = buildSizeBreakdown(allEntries);
   const totalSize = allEntries.reduce((sum, e) => sum + e.uncompressedSize, 0);
 
@@ -102,7 +91,9 @@ export async function analyzePackage(fileName: string, bytes: Uint8Array): Promi
       try {
         manifest = parseApkManifest(manifestBytes);
       } catch {
-        warnings.push("AndroidManifest.xml could not be parsed — showing partial results.");
+        warnings.push(
+          "AndroidManifest.xml could not be parsed — showing partial results.",
+        );
       }
     } else {
       warnings.push("No AndroidManifest.xml found at the ZIP root.");
@@ -122,21 +113,33 @@ export async function analyzePackage(fileName: string, bytes: Uint8Array): Promi
       if (bytes2) sigMap.set(name, bytes2);
     }
     try {
-      signature = await analyzeSignature(sigMap);
+      signature = await analyzeSignature(
+        sigMap,
+        await readSigningBlock(
+          input instanceof Blob ? input : new Blob([new Uint8Array(input)]),
+          archive.directoryOffset,
+          archive.limits.maxSigningBytes,
+        ),
+      );
     } catch {
       warnings.push("Could not analyze the signing block.");
     }
   }
 
-  const modules = format === "aab" ? topLevelModules(paths).filter((m) => m !== "META-INF") : [];
+  const modules =
+    format === "aab"
+      ? topLevelModules(paths).filter((m) => m !== "META-INF")
+      : [];
 
+  if (modules.length > 200)
+    warnings.push("Module list limited to the first 200 modules.");
   return {
     fileName,
     totalSize,
     fileCount: allEntries.length,
     format,
     sizeBreakdown,
-    modules,
+    modules: modules.slice(0, 200),
     manifest,
     manifestUnsupportedReason,
     signature,
