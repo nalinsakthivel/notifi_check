@@ -4,20 +4,38 @@ export interface SizeCategory {
   uncompressedSize: number;
 }
 
-const ABI_DIRS = ["armeabi-v7a", "arm64-v8a", "x86", "x86_64", "armeabi", "mips", "mips64"];
+const ABI_DIRS = [
+  "armeabi-v7a",
+  "arm64-v8a",
+  "x86",
+  "x86_64",
+  "armeabi",
+  "mips",
+  "mips64",
+];
 
 /** Buckets a ZIP entry path into a human category, per the size-breakdown spec. */
 export function categorize(path: string): string {
+  // Strip only recognized module-relative prefixes (AAB).
+  path = path.replace(
+    /^[^/]+\/(?=(?:dex|lib|res|assets|manifest)\/|resources\.pb$)/,
+    "",
+  );
+  if (path.startsWith("dex/")) path = path.slice(4);
+  if (path === "manifest/AndroidManifest.xml") return "Manifest";
   const base = path.split("/").pop() ?? path;
 
   if (/^classes\d*\.dex$/.test(base)) return "Code (DEX)";
   if (path.startsWith("META-INF/")) return "Signing";
-  if (base === "resources.arsc") return "Compiled resources";
+  if (base === "resources.arsc" || base === "resources.pb")
+    return "Compiled resources";
   if (path.startsWith("res/")) return "Resources";
   if (path.startsWith("assets/")) return "Assets";
   if (path.startsWith("lib/")) {
     const abi = path.split("/")[1];
-    return ABI_DIRS.includes(abi) ? `Native libraries (${abi})` : "Native libraries (other)";
+    return ABI_DIRS.includes(abi)
+      ? `Native libraries (${abi})`
+      : "Native libraries (other)";
   }
   if (path === "AndroidManifest.xml") return "Manifest";
   return "Other";
@@ -41,7 +59,9 @@ export function buildSizeBreakdown(
       });
     }
   }
-  return [...byCategory.values()].sort((a, b) => b.uncompressedSize - a.uncompressedSize);
+  return [...byCategory.values()].sort(
+    (a, b) => b.uncompressedSize - a.uncompressedSize,
+  );
 }
 
 export function formatBytes(bytes: number): string {

@@ -1,4 +1,4 @@
-import { attr, findChildren, parseAxml, type AxmlElement } from "./axml";
+import { attr, findChildren, parseAxml, type AxmlElement } from "./axml.ts";
 
 export interface ManifestInfo {
   packageName: string | null;
@@ -7,36 +7,18 @@ export interface ManifestInfo {
   minSdkVersion: string | null;
   targetSdkVersion: string | null;
   permissions: string[];
-  components: { type: "activity" | "service" | "receiver" | "provider"; name: string }[];
+  declaredPermissions: string[];
+  components: {
+    type: "activity" | "activity-alias" | "service" | "receiver" | "provider";
+    name: string;
+  }[];
   /** Fields we couldn't confidently extract, for "unknown" messaging in the UI. */
   unknownFields: string[];
 }
 
-const EMPTY_MANIFEST: ManifestInfo = {
-  packageName: null,
-  versionCode: null,
-  versionName: null,
-  minSdkVersion: null,
-  targetSdkVersion: null,
-  permissions: [],
-  components: [],
-  unknownFields: [
-    "packageName",
-    "versionCode",
-    "versionName",
-    "minSdkVersion",
-    "targetSdkVersion",
-  ],
-};
-
-/** Parses an APK's binary-XML AndroidManifest.xml. Never throws — degrades field-by-field. */
+/** Parses an APK's binary-XML AndroidManifest.xml. Throws on malformed AXML; unresolved fields remain null. */
 export function parseApkManifest(bytes: Uint8Array): ManifestInfo {
-  let root: AxmlElement;
-  try {
-    root = parseAxml(bytes);
-  } catch {
-    return { ...EMPTY_MANIFEST };
-  }
+  const root = parseAxml(bytes);
 
   const unknownFields: string[] = [];
   const get = (name: string, from: AxmlElement = root) => {
@@ -59,15 +41,24 @@ export function parseApkManifest(bytes: Uint8Array): ManifestInfo {
   if (minSdkVersion === null) unknownFields.push("minSdkVersion");
   if (targetSdkVersion === null) unknownFields.push("targetSdkVersion");
 
-  const permissions = findChildren(root, "uses-permission")
+  const permissions = [
+    ...findChildren(root, "uses-permission"),
+    ...findChildren(root, "uses-permission-sdk-23"),
+  ]
     .map((el) => attr(el, "name"))
     .filter((v): v is string => !!v);
 
   const application = findChildren(root, "application")[0];
   const components: ManifestInfo["components"] = [];
   if (application) {
-    const kinds: Array<["activity" | "service" | "receiver" | "provider", string]> = [
+    const kinds: Array<
+      [
+        "activity" | "activity-alias" | "service" | "receiver" | "provider",
+        string,
+      ]
+    > = [
       ["activity", "activity"],
+      ["activity-alias", "activity-alias"],
       ["service", "service"],
       ["receiver", "receiver"],
       ["provider", "provider"],
@@ -86,7 +77,10 @@ export function parseApkManifest(bytes: Uint8Array): ManifestInfo {
     versionName,
     minSdkVersion,
     targetSdkVersion,
-    permissions,
+    permissions: [...new Set(permissions)],
+    declaredPermissions: findChildren(root, "permission")
+      .map((el) => attr(el, "name"))
+      .filter((v): v is string => !!v),
     components,
     unknownFields,
   };
