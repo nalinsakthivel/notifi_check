@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendOneSignalNotification } from "@/lib/onesignal-service";
 import { OneSignalMessagePayload } from "@/lib/onesignal-types";
+import { checkRequestSize, InputError, parseNotificationData, publicError, MAX_FIELD_LENGTH } from "@/lib/notification-validation";
 
 export async function POST(request: NextRequest) {
   try {
+    checkRequestSize(request);
     const form = await request.formData();
     const appId = form.get("appId");
     const restApiKey = form.get("restApiKey");
@@ -34,17 +36,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let parsedData: Record<string, string> | undefined;
-    if (typeof data === "string" && data.trim()) {
-      try {
-        parsedData = JSON.parse(data);
-      } catch {
-        return NextResponse.json(
-          { success: false, error: "data field is not valid JSON." },
-          { status: 400 }
-        );
-      }
+    if ([appId, restApiKey, playerId, title, body].some(v => (v as string).length > MAX_FIELD_LENGTH)) {
+      throw new InputError("One or more fields exceed the maximum allowed length.");
     }
+    const parsedData = parseNotificationData(typeof data === "string" ? data : undefined);
 
     const payload: OneSignalMessagePayload = {
       appId,
@@ -60,8 +55,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (rawError: unknown) {
-    console.error("Unhandled error in /api/notifications/onesignal/send:", rawError);
-    const message = rawError instanceof Error ? rawError.message : String(rawError);
+    if (rawError instanceof InputError) return NextResponse.json({ success: false, error: rawError.message }, { status: 400 });
+    const message = publicError(rawError).message;
     return NextResponse.json(
       { success: false, error: message || "An unexpected error occurred" },
       { status: 500 }
