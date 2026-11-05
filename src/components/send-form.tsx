@@ -3,6 +3,7 @@
 import { toFirebaseLikeError } from "@/lib/errors";
 import { reportFcmStatus } from "@/lib/fcm-status";
 import { FormEvent, useState } from "react";
+import { trackToolEvent } from "@/lib/tool-analytics";
 
 type Result =
   | { status: "idle" }
@@ -27,6 +28,7 @@ export function SendForm({ mode }: { mode: "send" | "webpush" }) {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setResult({ status: "loading" });
+    trackToolEvent("push_notification_tester", "started", mode === "send" ? "fcm" : "webpush");
 
     const formEl = e.currentTarget;
     const form = new FormData(formEl);
@@ -44,6 +46,7 @@ export function SendForm({ mode }: { mode: "send" | "webpush" }) {
       formEl.reset();
 
       if (!res.ok || !json.success) {
+        trackToolEvent("push_notification_tester", "failed", mode === "send" ? "fcm" : "webpush");
         // A 4xx here means the request itself was malformed (bad file, missing
         // fields) — that's user error, not FCM being unreachable. Only a 5xx
         // means our route actually tried to talk to FCM and failed.
@@ -57,6 +60,7 @@ export function SendForm({ mode }: { mode: "send" | "webpush" }) {
         return;
       }
 
+      trackToolEvent("push_notification_tester", "succeeded", mode === "send" ? "fcm" : "webpush");
       reportFcmStatus("up");
       setResult({
         status: "success",
@@ -65,6 +69,7 @@ export function SendForm({ mode }: { mode: "send" | "webpush" }) {
       });
     } catch (rawErr: unknown) {
       formEl.reset();
+      trackToolEvent("push_notification_tester", "failed", mode === "send" ? "fcm" : "webpush");
       const err = toFirebaseLikeError(rawErr);
       reportFcmStatus("down");
       setResult({ status: "error", error: err.message });
