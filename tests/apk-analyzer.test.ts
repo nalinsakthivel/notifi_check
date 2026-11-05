@@ -348,3 +348,36 @@ test("too many signature candidates fail before extraction", async () => {
     /signature.*limit|too many signature/i,
   );
 });
+
+test("element namespace mismatches and invalid namespace indices are rejected", () => {
+  for (const ns of [0, 0xfffffffe]) {
+    const b = axml([
+      { name: "manifest" },
+      { name: "uses-permission", attrs: { name: "android.permission.CAMERA" } },
+      { name: "uses-permission", close: true },
+      { name: "manifest", close: true },
+    ]);
+    const v = new DataView(b.buffer);
+    let p = 8;
+    while (v.getUint16(p, true) !== 0x102) p += v.getUint32(p + 4, true);
+    p += v.getUint32(p + 4, true);
+    v.setUint32(p + 16, ns, true);
+    assert.throws(() => parseApkManifest(b), /XML|AXML/i);
+  }
+});
+test("foreign-namespaced manifest elements cannot contribute Android permissions", () => {
+  const b = axml([
+    { name: "manifest" },
+    { name: "uses-permission", attrs: { name: "android.permission.CAMERA" } },
+    { name: "uses-permission", close: true },
+    { name: "manifest", close: true },
+  ]);
+  const v = new DataView(b.buffer);
+  let p = 8;
+  while (v.getUint16(p, true) !== 0x102) p += v.getUint32(p + 4, true);
+  p += v.getUint32(p + 4, true);
+  v.setUint32(p + 16, 0, true);
+  p += v.getUint32(p + 4, true);
+  v.setUint32(p + 16, 0, true);
+  assert.deepEqual(parseApkManifest(b).permissions, []);
+});

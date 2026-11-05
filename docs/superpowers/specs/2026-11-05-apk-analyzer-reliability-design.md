@@ -1,6 +1,6 @@
 # APK/AAB analyzer reliability and security
 
-Status: proposed for review. Base: latest fetched `feat/nextjs-rebuild`.
+Status: approved by the user on 2026-11-05. Base: latest fetched `feat/nextjs-rebuild`.
 
 ## Intent and constraints
 

@@ -6,6 +6,7 @@ export interface AxmlAttribute {
   value: string | null;
 }
 export interface AxmlElement {
+  namespace: string | null;
   name: string;
   attributes: AxmlAttribute[];
   children: AxmlElement[];
@@ -125,6 +126,8 @@ export function parseAxml(buf: Uint8Array): AxmlElement {
         stack.length >= 128
       )
         bad();
+      const elementNs = u32(pos + 16);
+      const namespace = elementNs === 0xffffffff ? null : str(elementNs);
       const name = str(u32(pos + 20)),
         attrStart = u16(pos + 24),
         attrSize = u16(pos + 26),
@@ -162,7 +165,7 @@ export function parseAxml(buf: Uint8Array): AxmlElement {
         if (returnedText > 2 * 1024 ** 2) bad();
         attributes.push({ name, namespace, value });
       }
-      const el = { name, attributes, children: [] };
+      const el = { namespace, name, attributes, children: [] };
       if (stack.length) stack[stack.length - 1].children.push(el);
       else {
         if (root) bad();
@@ -174,7 +177,9 @@ export function parseAxml(buf: Uint8Array): AxmlElement {
         header !== 16 ||
         size !== 24 ||
         !stack.length ||
-        str(u32(pos + 20)) !== stack[stack.length - 1].name
+        str(u32(pos + 20)) !== stack[stack.length - 1].name ||
+        (u32(pos + 16) === 0xffffffff ? null : str(u32(pos + 16))) !==
+          stack[stack.length - 1].namespace
       )
         bad();
       stack.pop();
@@ -188,11 +193,17 @@ export function parseAxml(buf: Uint8Array): AxmlElement {
     } else if (type !== 0x104) bad();
     pos = end;
   }
-  if (!root || stack.length || root.name !== "manifest") bad();
+  if (
+    !root ||
+    stack.length ||
+    root.name !== "manifest" ||
+    root.namespace !== null
+  )
+    bad();
   return root!;
 }
 export function findChildren(el: AxmlElement, name: string): AxmlElement[] {
-  return el.children.filter((c) => c.name === name);
+  return el.children.filter((c) => c.name === name && c.namespace === null);
 }
 const ANDROID = "http://schemas.android.com/apk/res/android";
 export function attr(el: AxmlElement, name: string): string | undefined {

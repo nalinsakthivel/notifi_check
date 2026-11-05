@@ -80,3 +80,63 @@ test("worker errors, creation failure, oversized file and disposal leave no acti
   c.dispose();
   assert.equal(w.onmessage, null);
 });
+
+test("oversized files are rejected without starting a worker", () => {
+  let created = false;
+  let error = "";
+  const c = new AnalysisController(
+    () => {
+      created = true;
+      return new FakeWorker();
+    },
+    { maxFileBytes: 1 },
+  );
+  c.start(new File(["xx"], "a.apk"), {
+    progress: () => {},
+    success: () => assert.fail("must not succeed"),
+    failure: (s) => {
+      error = s;
+    },
+  });
+  assert.equal(created, false);
+  assert.match(error, /large/i);
+});
+test("worker timeout terminates resources and reports one failure", async () => {
+  const w = new FakeWorker();
+  let failures = 0;
+  const c = new AnalysisController(() => w, {}, 5);
+  await new Promise<void>((resolve) =>
+    c.start(new File(["x"], "a.apk"), {
+      progress: () => {},
+      success: () => assert.fail("must time out"),
+      failure: (s) => {
+        assert.match(s, /timeout/i);
+        failures++;
+        resolve();
+      },
+    }),
+  );
+  assert.equal(failures, 1);
+  assert.equal(w.terminated, true);
+  assert.equal(w.onmessage, null);
+});
+test("message decoding and postMessage failures clean up the active worker", () => {
+  for (const throws of [false, true]) {
+    const w = new FakeWorker();
+    if (throws)
+      w.postMessage = () => {
+        throw new Error("clone failed");
+      };
+    let failures = 0;
+    const c = new AnalysisController(() => w);
+    c.start(new File(["x"], "a.apk"), {
+      progress: () => {},
+      success: () => assert.fail("must not succeed"),
+      failure: () => failures++,
+    });
+    if (!throws) w.onmessageerror!({} as MessageEvent);
+    assert.equal(failures, 1);
+    assert.equal(w.terminated, true);
+    assert.equal(w.onmessage, null);
+  }
+});
