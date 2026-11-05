@@ -1,6 +1,8 @@
 import { OneSignalMessagePayload, OneSignalResponse } from "./onesignal-types";
+import { publicError } from "./notification-validation";
 
 const ONESIGNAL_API_URL = "https://onesignal.com/api/v1/notifications";
+const REQUEST_TIMEOUT_MS = 12_000;
 
 export async function sendOneSignalNotification(
   payload: OneSignalMessagePayload
@@ -8,6 +10,7 @@ export async function sendOneSignalNotification(
   try {
     const res = await fetch(ONESIGNAL_API_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         "Content-Type": "application/json; charset=utf-8",
         Authorization: `Key ${payload.restApiKey}`,
@@ -25,14 +28,13 @@ export async function sendOneSignalNotification(
     const json = await res.json();
 
     if (!res.ok || (Array.isArray(json.errors) && json.errors.length > 0)) {
-      const message = Array.isArray(json.errors) ? json.errors.join(", ") : `HTTP ${res.status}`;
+      const message = `OneSignal rejected the request (HTTP ${res.status}). Check the app ID, API key, subscription ID and payload.`;
       return { success: false, error: message, errorCode: String(res.status) };
     }
 
     return { success: true, notificationId: json.id };
   } catch (rawError: unknown) {
-    console.error("Error sending OneSignal notification:", rawError);
-    const message = rawError instanceof Error ? rawError.message : String(rawError);
+    const message = publicError(rawError).message;
     return { success: false, error: message || "Unknown error occurred while sending notification" };
   }
 }
