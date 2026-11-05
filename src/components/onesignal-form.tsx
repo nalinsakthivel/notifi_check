@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { trackToolEvent } from "@/lib/tool-analytics";
 
 type Result =
   | { status: "idle" }
@@ -24,6 +25,7 @@ export function OneSignalForm() {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setResult({ status: "loading" });
+    trackToolEvent("push_notification_tester", "started", "onesignal");
 
     const formEl = e.currentTarget;
     const form = new FormData(formEl);
@@ -38,6 +40,7 @@ export function OneSignalForm() {
       formEl.reset();
 
       if (!res.ok || !json.success) {
+        trackToolEvent("push_notification_tester", "failed", "onesignal");
         setResult({
           status: "error",
           error: json.error || `Request failed with HTTP ${res.status}`,
@@ -47,9 +50,11 @@ export function OneSignalForm() {
         return;
       }
 
+      trackToolEvent("push_notification_tester", "succeeded", "onesignal");
       setResult({ status: "success", notificationId: json.notificationId });
     } catch (rawErr: unknown) {
       formEl.reset();
+      trackToolEvent("push_notification_tester", "failed", "onesignal");
       const message = rawErr instanceof Error ? rawErr.message : String(rawErr);
       setResult({ status: "error", error: message });
     }
