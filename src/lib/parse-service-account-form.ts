@@ -1,5 +1,5 @@
 import type { ServiceAccount } from "firebase-admin/app";
-import { MAX_CREDENTIAL_BYTES, checkRequestSize, InputError } from "./notification-validation";
+import { MAX_CREDENTIAL_BYTES, checkRequestSize } from "./notification-validation";
 
 export class BadRequestError extends Error {}
 
