@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendNotification } from "@/lib/fcm-service";
 import { FCMMessagePayload } from "@/lib/fcm-types";
 import { parseServiceAccountForm, BadRequestError } from "@/lib/parse-service-account-form";
-import { toFirebaseLikeError } from "@/lib/errors";
+import { parseNotificationData, requireFields, publicError, InputError } from "@/lib/notification-validation";
 
 export async function POST(request: NextRequest) {
   try {
     const { serviceAccount, fields } = await parseServiceAccountForm(request);
     const { fcmToken, title, body, data } = fields;
 
+    requireFields(fields, ["fcmToken", "title", "body"]);
     if (!fcmToken || !title || !body) {
       return NextResponse.json(
         {
@@ -23,18 +24,17 @@ export async function POST(request: NextRequest) {
       fcmToken,
       title,
       body,
-      data: data ? JSON.parse(data) : undefined,
+      data: parseNotificationData(data),
     };
 
     const result = await sendNotification(serviceAccount, payload);
 
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (rawError: unknown) {
-    if (rawError instanceof BadRequestError) {
+    if (rawError instanceof BadRequestError || rawError instanceof InputError) {
       return NextResponse.json({ success: false, error: rawError.message }, { status: 400 });
     }
-    console.error("Unhandled error in /api/notifications/send:", rawError);
-    const error = toFirebaseLikeError(rawError);
+    const error = publicError(rawError);
     return NextResponse.json(
       { success: false, error: error.message || "An unexpected error occurred" },
       { status: 500 }

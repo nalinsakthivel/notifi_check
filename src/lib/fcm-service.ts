@@ -1,7 +1,7 @@
 import type { ServiceAccount } from "firebase-admin/app";
 import { withMessaging } from "./firebase-admin";
 import { FCMMessagePayload, FCMResponse, WebPushMessagePayload } from "./fcm-types";
-import { toFirebaseLikeError } from "./errors";
+import { publicError } from "./notification-validation";
 
 export async function sendNotification(
   serviceAccount: ServiceAccount,
@@ -22,8 +22,8 @@ export async function sendNotification(
       return { success: true, messageId };
     });
   } catch (rawError: unknown) {
-    console.error("Error sending FCM message:", rawError);
-    const error = toFirebaseLikeError(rawError);
+
+    const error = publicError(rawError);
     return {
       success: false,
       error: error.message || "Unknown error occurred while sending notification",
@@ -68,8 +68,8 @@ export async function sendWebPushNotification(
       };
     });
   } catch (rawError: unknown) {
-    console.error("Error sending web push message:", rawError);
-    const error = toFirebaseLikeError(rawError);
+
+    const error = publicError(rawError);
     return {
       success: false,
       error: error.message || "Unknown error occurred while sending web push notification",
