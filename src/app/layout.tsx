@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { ToolUsageTracker } from "@/components/tool-usage-tracker";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -78,6 +79,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
         <Analytics />
+        <ToolUsageTracker />
       </body>
     </html>
   );
