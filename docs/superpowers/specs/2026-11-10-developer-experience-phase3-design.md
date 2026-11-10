@@ -27,7 +27,7 @@ An alternative is guidance-only documentation, which leaves false success/provid
 
 Create a dependency-free catalog with fixed tool/provider, diagnostic code, category, title, explanation and next steps. Categories cover input, credentials/project configuration, device/subscription, payload, quota, timeout/network, provider availability, unsupported package features, safety limits, malformed archives/manifests and unexpected internal failures.
 
-Map only allowlisted provider error codes/statuses and known typed local errors. Never show or copy arbitrary provider response bodies, SDK exceptions, credential parsing fragments, filenames or archive entry names. Unknown failures get fixed safe guidance. Preserve existing response fields where needed and add an optional structured diagnostic; existing errorCode stays allowlisted. Do not equate a credential, payload, subscription or local network failure with a provider outage. A success says accepted or dry-run validated, not delivered.
+Map only allowlisted provider error codes/statuses and known typed local errors. Preserve status provenance: browser-to-app HTTP status and app-to-provider status are distinct; an application-generated 500 or malformed reply is not evidence of provider outage. Validate diagnostic codes and optional fields at runtime on both sides of worker/server boundaries; reconstruct copy text from catalog entries rather than serializing received objects. Never show or copy arbitrary provider response bodies, SDK exceptions, credential parsing fragments, filenames or archive entry names. Unknown failures get fixed safe guidance. Preserve existing response fields where needed and add an optional structured diagnostic; existing errorCode stays allowlisted. Do not equate a credential, payload, subscription or local network failure with a provider outage. A success says accepted or dry-run validated, not delivered.
 
 The shared result panel has a descriptive heading, alert/status semantics, wrapping text, keyboard-accessible Copy diagnostics and clipboard-failure feedback. Copied troubleshooting text contains only fixed catalog values, tool/provider, stage and sanitized numeric HTTP status where known. It excludes message IDs and all user inputs. Existing explicit field-copy actions remain available.
 
@@ -37,9 +37,9 @@ Use the existing feedback page and GitHub issue flow with a reminder to remove s
 
 Handle malformed/non-JSON responses, structured OneSignal errors, missing/empty IDs, timeouts and transport errors separately. Validate successful response shape before emitting succeeded. Retain per-request ephemeral Firebase apps and cleanup.
 
-Validate required fields consistently (including whitespace-only values), bound optional fields, and accept only supported HTTP(S) link/icon/image URLs. Bound actual multipart request bytes before form parsing, independent of Content-Length, and classify malformed multipart as input errors. Never echo invalid values. Clear credentials/tokens/form inputs on completion and all error paths; never log or persist them.
+Validate required fields consistently (including whitespace-only values), bound optional fields, and accept only supported HTTP(S) link/icon/image URLs. Bound actual multipart request bytes before form parsing, independent of missing or dishonest Content-Length, cancel the stream reader immediately at the limit, and classify malformed multipart as input errors. Test these conditions at the real parser boundary. Never echo invalid values. Clear credentials/tokens/form inputs on completion and all error paths; never log or persist them.
 
-Automated provider tests use controlled fetch/SDK boundaries and synthetic credentials only. Any timeout protection must not leave an SDK app in use after deletion or claim a cancelled send was not delivered. Do not automatically retry a potentially delivered push.
+Automated provider tests use controlled fetch/SDK boundaries and synthetic credentials only. Any timeout protection must not leave an SDK app in use after deletion or claim a cancelled send was not delivered. Use an abortable transport or supported SDK timeout rather than Promise.race with premature Firebase app deletion. Timeout guidance must state acceptance/delivery is unknown. Do not automatically retry a potentially delivered push.
 
 ## Analyzer compatibility
 
@@ -66,3 +66,5 @@ Document changed files, diagnostics/troubleshooting, reproduced defects, checks/
 ## Remaining security boundaries
 
 Provider acceptance cannot prove delivery. This work does not add user accounts, distributed rate limiting, full cryptographic APK verification or AAB protobuf support. Public push routes may still need infrastructure-level abuse controls. User-submitted feedback remains an explicit data-sharing action; diagnostics must never silently include sensitive input. Public-release package testing does not establish compatibility with all Android build tools or signing schemes.
+
+Design review completed: no additional user decisions identified. Clarifications about status provenance, timeout ownership, streamed multipart bounds and runtime catalog validation incorporated. Baseline: 39 unit tests pass; production-site/GitHub API probes are network-policy blocked.
