@@ -92,7 +92,7 @@ import { randomBytes } from "node:crypto";
       mimeType: "application/zip",
       buffer: Buffer.from("not zip"),
     });
-    await page.getByText(/Invalid or unsupported ZIP archive/).waitFor();
+    await page.getByText(/Archive is malformed or corrupt/).waitFor();
     await input.setInputFiles({
       name: "bundle.aab",
       mimeType: "application/zip",

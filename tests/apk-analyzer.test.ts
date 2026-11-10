@@ -381,3 +381,19 @@ test("foreign-namespaced manifest elements cannot contribute Android permissions
   v.setUint32(p + 16, 0, true);
   assert.deepEqual(parseApkManifest(b).permissions, []);
 });
+
+test("package failures and partial manifests expose stable safe diagnostic codes", async () => {
+  await assert.rejects(
+    analyzePackage("SECRET.apk", new Blob(["bad"])),
+    (e) =>
+      e instanceof Error &&
+      "diagnosticCode" in e &&
+      e.diagnosticCode === "package-invalid",
+  );
+  const r = await analyzePackage(
+    "a.apk",
+    blob({ "AndroidManifest.xml": new TextEncoder().encode("bad XML") }),
+  );
+  assert.ok(r.diagnosticCodes.includes("manifest-invalid"));
+  assert.equal(r.manifest, null);
+});

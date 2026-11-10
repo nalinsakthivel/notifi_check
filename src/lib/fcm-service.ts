@@ -1,11 +1,16 @@
 import type { ServiceAccount } from "firebase-admin/app";
 import { withMessaging } from "./firebase-admin";
-import { FCMMessagePayload, FCMResponse, WebPushMessagePayload } from "./fcm-types";
+import {
+  FCMMessagePayload,
+  FCMResponse,
+  WebPushMessagePayload,
+} from "./fcm-types";
+import { DIAGNOSTICS, notificationDiagnostic } from "./diagnostics.ts";
 import { publicError } from "./notification-validation";
 
 export async function sendNotification(
   serviceAccount: ServiceAccount,
-  payload: FCMMessagePayload
+  payload: FCMMessagePayload,
 ): Promise<FCMResponse> {
   try {
     return await withMessaging(serviceAccount, async (messaging) => {
@@ -22,11 +27,12 @@ export async function sendNotification(
       return { success: true, messageId };
     });
   } catch (rawError: unknown) {
-
     const error = publicError(rawError);
+    const diagnosticCode = notificationDiagnostic(rawError);
     return {
       success: false,
-      error: error.message || "Unknown error occurred while sending notification",
+      error: DIAGNOSTICS[diagnosticCode][1],
+      diagnosticCode,
       errorCode: error.code,
     };
   }
@@ -34,7 +40,7 @@ export async function sendNotification(
 
 export async function sendWebPushNotification(
   serviceAccount: ServiceAccount,
-  payload: WebPushMessagePayload
+  payload: WebPushMessagePayload,
 ): Promise<FCMResponse> {
   try {
     return await withMessaging(serviceAccount, async (messaging) => {
@@ -60,7 +66,10 @@ export async function sendWebPushNotification(
         },
       };
 
-      const messageId = await messaging.send(message, payload.validateOnly ?? false);
+      const messageId = await messaging.send(
+        message,
+        payload.validateOnly ?? false,
+      );
       return {
         success: true,
         messageId,
@@ -68,11 +77,12 @@ export async function sendWebPushNotification(
       };
     });
   } catch (rawError: unknown) {
-
     const error = publicError(rawError);
+    const diagnosticCode = notificationDiagnostic(rawError);
     return {
       success: false,
-      error: error.message || "Unknown error occurred while sending web push notification",
+      error: DIAGNOSTICS[diagnosticCode][1],
+      diagnosticCode,
       errorCode: error.code,
     };
   }

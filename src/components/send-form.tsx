@@ -1,7 +1,8 @@
 "use client";
+import { DiagnosticPanel } from "@/components/diagnostic-panel";
+import { requestPush } from "@/lib/push-response";
+import type { DiagnosticCode } from "@/lib/diagnostics";
 
-import { toFirebaseLikeError } from "@/lib/errors";
-import { reportFcmStatus } from "@/lib/fcm-status";
 import { FormEvent, useState } from "react";
 import { trackToolEvent } from "@/lib/tool-analytics";
 
@@ -9,15 +10,12 @@ type Result =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "success"; messageId?: string; validated?: boolean }
-  | { status: "error"; error: string; errorCode?: string; httpStatus?: number };
-
-interface SendApiResponse {
-  success: boolean;
-  messageId?: string;
-  validated?: boolean;
-  error?: string;
-  errorCode?: string;
-}
+  | {
+      status: "error";
+      diagnosticCode: DiagnosticCode;
+      appStatus?: number;
+      providerStatus?: number;
+    };
 
 const fieldClass =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent placeholder:text-mute/60";
@@ -27,59 +25,33 @@ export function SendForm({ mode }: { mode: "send" | "webpush" }) {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const tool = mode === "send" ? "fcm" : "webpush";
     setResult({ status: "loading" });
-    trackToolEvent("push_notification_tester", "started", mode === "send" ? "fcm" : "webpush");
-
+    trackToolEvent("push_notification_tester", "started", tool);
     const formEl = e.currentTarget;
-    const form = new FormData(formEl);
-    const endpoint =
-      mode === "send"
-        ? "/api/notifications/send"
-        : "/api/notifications/web-push/send";
-
     try {
-      const res = await fetch(endpoint, { method: "POST", body: form });
-      const json = (await res.json()) as SendApiResponse;
-
-      // Always clear the file input after the request completes, success or not,
-      // so the JSON key never lingers in the DOM/form state longer than needed.
-      formEl.reset();
-
-      if (!res.ok || !json.success) {
-        trackToolEvent("push_notification_tester", "failed", mode === "send" ? "fcm" : "webpush");
-        // A 4xx here means the request itself was malformed (bad file, missing
-        // fields) — that's user error, not FCM being unreachable. Only a 5xx
-        // means our route actually tried to talk to FCM and failed.
-        if (res.status >= 500) reportFcmStatus("down");
+      const response = await requestPush(new FormData(formEl), tool);
+      if (response.success) {
         setResult({
-          status: "error",
-          error: json.error || `Request failed with HTTP ${res.status}`,
-          errorCode: json.errorCode,
-          httpStatus: res.status,
+          status: "success",
+          messageId: response.messageId,
+          validated: response.validated,
         });
-        return;
+        trackToolEvent("push_notification_tester", "succeeded", tool);
+      } else {
+        setResult({ ...response, status: "error" });
+        trackToolEvent("push_notification_tester", "failed", tool);
       }
-
-      trackToolEvent("push_notification_tester", "succeeded", mode === "send" ? "fcm" : "webpush");
-      reportFcmStatus("up");
-      setResult({
-        status: "success",
-        messageId: json.messageId,
-        validated: json.validated,
-      });
-    } catch (rawErr: unknown) {
+    } finally {
       formEl.reset();
-      trackToolEvent("push_notification_tester", "failed", mode === "send" ? "fcm" : "webpush");
-      const err = toFirebaseLikeError(rawErr);
-      reportFcmStatus("down");
-      setResult({ status: "error", error: err.message });
     }
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-md border border-border bg-panel p-6"
+      aria-busy={result.status === "loading"}
+      className="min-w-0 wrap-anywhere flex flex-col gap-4 rounded-md border border-border bg-panel p-6"
     >
       <Field
         label="Firebase service account JSON"
@@ -104,7 +76,7 @@ export function SendForm({ mode }: { mode: "send" | "webpush" }) {
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Title">
           <input
             type="text"
@@ -127,7 +99,7 @@ export function SendForm({ mode }: { mode: "send" | "webpush" }) {
 
       {mode === "webpush" && (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Link (optional)">
               <input
                 type="url"
@@ -173,27 +145,40 @@ export function SendForm({ mode }: { mode: "send" | "webpush" }) {
       </button>
 
       {result.status === "success" && (
-        <div className="rounded-md border border-live/40 bg-live/5 px-4 py-3 text-sm text-live">
-          <p className="tracking-wide">[OK] SENT SUCCESSFULLY</p>
+        <div
+          role="status"
+          className="rounded-md border border-live/40 bg-live/5 px-4 py-3 text-sm text-live"
+        >
+          <p className="tracking-wide">
+            {result.validated
+              ? "[OK] DRY-RUN VALIDATED"
+              : "[OK] PROVIDER ACCEPTED"}
+          </p>
+          <p className="mt-2 text-xs">
+            Provider acceptance does not confirm device delivery. A dry run does
+            not send a notification.
+          </p>
           {result.messageId && (
-            <p className="mt-1 break-all font-mono text-xs text-live/80">{result.messageId}</p>
+            <p className="mt-1 break-all font-mono text-xs text-live/80">
+              {result.messageId}
+            </p>
           )}
           {result.validated !== undefined && (
-            <p className="mt-1 text-live/80">VALIDATE_ONLY: {String(result.validated).toUpperCase()}</p>
+            <p className="mt-1 text-live/80">
+              VALIDATE_ONLY: {String(result.validated).toUpperCase()}
+            </p>
           )}
         </div>
       )}
 
       {result.status === "error" && (
-        <div className="rounded-md border border-red-500/40 bg-red-500/5 px-4 py-3 text-sm text-red-400">
-          <p className="tracking-wide">
-            [FAIL] SEND FAILED{result.httpStatus ? ` (HTTP ${result.httpStatus})` : ""}
-          </p>
-          {result.errorCode && (
-            <p className="mt-1 font-mono text-xs text-red-400/80">{result.errorCode}</p>
-          )}
-          <p className="mt-1 whitespace-pre-wrap text-red-400/80">{result.error}</p>
-        </div>
+        <DiagnosticPanel
+          key={result.diagnosticCode}
+          tool={mode === "send" ? "fcm" : "webpush"}
+          code={result.diagnosticCode}
+          appStatus={result.appStatus}
+          providerStatus={result.providerStatus}
+        />
       )}
     </form>
   );
@@ -210,7 +195,9 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-xs tracking-widest text-mute">{label.toUpperCase()}</span>
+      <span className="text-xs tracking-widest text-mute">
+        {label.toUpperCase()}
+      </span>
       {children}
       {hint && <span className="text-xs text-mute/70">{hint}</span>}
     </label>

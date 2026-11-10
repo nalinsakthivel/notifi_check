@@ -140,3 +140,73 @@ test("message decoding and postMessage failures clean up the active worker", () 
     assert.equal(w.onmessage, null);
   }
 });
+
+test("worker error messages are reconstructed from catalog and never copy arbitrary payloads", () => {
+  const w = new FakeWorker();
+  let message = "";
+  let code = "";
+  const c = new AnalysisController(() => w);
+  c.start(new File(["x"], "a.apk"), {
+    progress: () => {},
+    success: () => assert.fail(),
+    failure: (text, diagnostic) => {
+      message = text;
+      code = diagnostic ?? "";
+    },
+  });
+  w.onmessage!({
+    data: {
+      id: 1,
+      type: "error",
+      error: "SECRET filename private.apk",
+      diagnosticCode: "package-unsupported",
+    },
+  } as MessageEvent);
+  assert.equal(code, "package-unsupported");
+  assert.doesNotMatch(message, /SECRET|private/);
+  assert.match(message, /unsupported/i);
+});
+
+test("malformed optional worker diagnostics fail safely before rendering", () => {
+  const w = new FakeWorker();
+  let code = "";
+  let success = false;
+  const c = new AnalysisController(() => w);
+  c.start(new File(["x"], "a.apk"), {
+    progress: () => {},
+    success: () => {
+      success = true;
+    },
+    failure: (_text, value) => {
+      code = value ?? "";
+    },
+  });
+  w.onmessage!({
+    data: { id: 1, type: "result", result: { diagnosticCodes: "SECRET" } },
+  } as MessageEvent);
+  assert.equal(success, false);
+  assert.equal(code, "response-invalid");
+  assert.equal(w.terminated, true);
+});
+test("worker diagnostic arrays are reconstructed as fixed codes", () => {
+  const w = new FakeWorker();
+  let codes: unknown;
+  const c = new AnalysisController(() => w);
+  c.start(new File(["x"], "a.apk"), {
+    progress: () => {},
+    success: (r) => {
+      codes = r.diagnosticCodes;
+    },
+    failure: () => assert.fail(),
+  });
+  w.onmessage!({
+    data: {
+      id: 1,
+      type: "result",
+      result: {
+        diagnosticCodes: ["manifest-invalid", "SECRET", { token: "SECRET" }],
+      },
+    },
+  } as MessageEvent);
+  assert.deepEqual(codes, ["manifest-invalid", "unexpected"]);
+});

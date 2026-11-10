@@ -1,12 +1,20 @@
+import { DIAGNOSTICS, errorDiagnostic } from "@/lib/diagnostics";
 import { NextRequest, NextResponse } from "next/server";
 import { sendOneSignalNotification } from "@/lib/onesignal-service";
 import { OneSignalMessagePayload } from "@/lib/onesignal-types";
-import { checkRequestSize, InputError, parseNotificationData, publicError, MAX_FIELD_LENGTH } from "@/lib/notification-validation";
+import {
+  readNotificationForm,
+  requireFields,
+  validateOptionalUrl,
+  InputError,
+  parseNotificationData,
+  publicError,
+  MAX_FIELD_LENGTH,
+} from "@/lib/notification-validation";
 
 export async function POST(request: NextRequest) {
   try {
-    checkRequestSize(request);
-    const form = await request.formData();
+    const form = await readNotificationForm(request);
     const appId = form.get("appId");
     const restApiKey = form.get("restApiKey");
     const playerId = form.get("playerId");
@@ -30,16 +38,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing required fields: appId, restApiKey, playerId, title, and body are required.",
+          error:
+            "Missing required fields: appId, restApiKey, playerId, title, and body are required.",
+          diagnosticCode: "input-invalid",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    if ([appId, restApiKey, playerId, title, body].some(v => (v as string).length > MAX_FIELD_LENGTH)) {
-      throw new InputError("One or more fields exceed the maximum allowed length.");
+    if (
+      [appId, restApiKey, playerId, title, body].some(
+        (v) => (v as string).length > MAX_FIELD_LENGTH,
+      )
+    ) {
+      throw new InputError(
+        "One or more fields exceed the maximum allowed length.",
+      );
     }
-    const parsedData = parseNotificationData(typeof data === "string" ? data : undefined);
+    requireFields({ appId, restApiKey, playerId, title, body }, [
+      "appId",
+      "restApiKey",
+      "playerId",
+      "title",
+      "body",
+    ]);
+    const parsedData = parseNotificationData(
+      typeof data === "string" ? data : undefined,
+    );
 
     const payload: OneSignalMessagePayload = {
       appId,
@@ -47,7 +72,7 @@ export async function POST(request: NextRequest) {
       playerId,
       title,
       body,
-      url: typeof url === "string" ? url : undefined,
+      url: validateOptionalUrl(typeof url === "string" ? url : undefined),
       data: parsedData,
     };
 
@@ -55,11 +80,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (rawError: unknown) {
-    if (rawError instanceof InputError) return NextResponse.json({ success: false, error: rawError.message }, { status: 400 });
+    if (rawError instanceof InputError)
+      return NextResponse.json(
+        {
+          success: false,
+          error: DIAGNOSTICS[errorDiagnostic(rawError)][1],
+          diagnosticCode: errorDiagnostic(rawError),
+        },
+        { status: 400 },
+      );
     const message = publicError(rawError).message;
     return NextResponse.json(
-      { success: false, error: message || "An unexpected error occurred" },
-      { status: 500 }
+      {
+        success: false,
+        error: message || "An unexpected error occurred",
+        diagnosticCode: "unexpected",
+      },
+      { status: 500 },
     );
   }
 }

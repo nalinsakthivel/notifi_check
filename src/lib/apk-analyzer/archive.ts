@@ -1,3 +1,4 @@
+import { DiagnosticError, type DiagnosticCode } from "../diagnostics.ts";
 import { Inflate } from "fflate";
 import { analysisLimits, type AnalysisLimits } from "./limits.ts";
 export interface ArchiveEntry {
@@ -9,8 +10,12 @@ export interface ArchiveEntry {
   flags: number;
   crc: number;
 }
-const invalid = (detail: string): never => {
-  throw new Error(
+const invalid = (
+  detail: string,
+  code: DiagnosticCode = "package-invalid",
+): never => {
+  throw new DiagnosticError(
+    code,
     `Invalid or unsupported ZIP archive: ${detail}. Export a standard APK/AAB and try again.`,
   );
 };
@@ -48,7 +53,8 @@ export async function readArchive(
 ) {
   const limits = analysisLimits(overrides);
   if (file.size > limits.maxFileBytes)
-    throw new Error(
+    throw new DiagnosticError(
+      "package-limit",
       `File is too large. The analysis limit is ${limits.maxFileBytes / 1024 ** 2} MiB.`,
     );
   if (file.size < 22) invalid("missing ZIP end record");
@@ -76,15 +82,16 @@ export async function readArchive(
     tv.getUint16(end + 6, true) !== 0 ||
     tv.getUint16(end + 8, true) !== count
   )
-    invalid("multidisk ZIP is not supported");
+    invalid("multidisk ZIP is not supported", "package-unsupported");
   if (
     count === 65535 ||
     directorySize === 0xffffffff ||
     directoryOffset === 0xffffffff
   )
-    invalid("ZIP64 is not supported");
+    invalid("ZIP64 is not supported", "package-unsupported");
   if (count > limits.maxEntries || directorySize > limits.maxDirectoryBytes)
-    throw new Error(
+    throw new DiagnosticError(
+      "package-limit",
       "Archive metadata exceeds the analysis entry/directory limit.",
     );
   if (directoryOffset + directorySize !== file.size - tail.length + end)
@@ -111,19 +118,19 @@ export async function readArchive(
     if (!n || n > 4096 || pos + 46 + n + extra + comment > directory.length)
       invalid("entry name or length");
     if (flags & (1 | 32 | 64 | 8192) || (method !== 0 && method !== 8))
-      invalid("encrypted entries or compression method");
+      invalid("encrypted entries or compression method", "package-unsupported");
     if (
       dv.getUint16(pos + 34, true) !== 0 ||
       offset === 0xffffffff ||
       compressedSize === 0xffffffff ||
       uncompressedSize === 0xffffffff
     )
-      invalid("ZIP64 or multidisk entry");
+      invalid("ZIP64 or multidisk entry", "package-unsupported");
     let path: string;
     try {
       path = decoder.decode(directory.subarray(pos + 46, pos + 46 + n));
     } catch {
-      invalid("unsupported entry name encoding");
+      invalid("unsupported entry name encoding", "package-unsupported");
     }
     if (path!.includes("\0") || names.has(path!))
       invalid("duplicate or invalid entry path");
@@ -133,16 +140,23 @@ export async function readArchive(
       uncompressedSize > limits.maxTotalBytes ||
       (total += uncompressedSize) > limits.maxTotalBytes
     )
-      throw new Error("Archive total size exceeds the analysis limit.");
+      throw new DiagnosticError(
+        "package-limit",
+        "Archive total size exceeds the analysis limit.",
+      );
     if (uncompressedSize > Math.max(1, compressedSize) * limits.maxRatio)
-      throw new Error("Archive expansion ratio exceeds the safety limit.");
+      throw new DiagnosticError(
+        "package-limit",
+        "Archive expansion ratio exceeds the safety limit.",
+      );
     if (
       (path! === "AndroidManifest.xml" ||
         /^META-INF\/[^/]+\.(RSA|DSA|EC)$/i.test(path!)) &&
       (uncompressedSize > limits.maxEntryBytes ||
         compressedSize > limits.maxEntryBytes)
     )
-      throw new Error(
+      throw new DiagnosticError(
+        "package-limit",
         "Manifest or certificate entry is too large for the extraction limit.",
       );
     if (offset + 30 + n + compressedSize > directoryOffset)
@@ -177,7 +191,10 @@ export async function readArchive(
       entry.compressedSize > limits.maxEntryBytes ||
       extracted + entry.uncompressedSize > limits.maxExtractedBytes
     )
-      throw new Error("Extracted entry/total size exceeds the safety limit.");
+      throw new DiagnosticError(
+        "package-limit",
+        "Extracted entry/total size exceeds the safety limit.",
+      );
     extracted += entry.uncompressedSize;
     const header = await readSlice(file, entry.offset, 30),
       hv = view(header);
@@ -216,7 +233,10 @@ export async function readArchive(
       // DEFLATE expansion (~1 MiB) before ondata, even when headers lie.
       const inflater = new Inflate((chunk) => {
         if (written + chunk.length > output.length)
-          throw new Error("Decompressed size exceeds the declared entry size.");
+          throw new DiagnosticError(
+            "package-limit",
+            "Decompressed size exceeds the declared entry size.",
+          );
         output.set(chunk, written);
         written += chunk.length;
       });
@@ -229,8 +249,10 @@ export async function readArchive(
           );
         }
         if (entry.compressedSize === 0) invalid("empty deflate stream");
-      } catch {
-        throw new Error(
+      } catch (e) {
+        if (e instanceof DiagnosticError) throw e;
+        throw new DiagnosticError(
+          "package-invalid",
           "Could not decompress entry: malformed data or size limit exceeded.",
         );
       }

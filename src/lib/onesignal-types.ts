@@ -1,3 +1,4 @@
+import type { DiagnosticCode } from "./diagnostics.ts";
 export interface OneSignalMessagePayload {
   appId: string;
   restApiKey: string;
@@ -13,4 +14,6 @@ export interface OneSignalResponse {
   notificationId?: string;
   error?: string;
   errorCode?: string;
+  diagnosticCode?: DiagnosticCode;
+  providerStatus?: number;
 }

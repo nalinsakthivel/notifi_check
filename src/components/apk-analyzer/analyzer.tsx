@@ -1,5 +1,7 @@
 "use client";
 
+import { DiagnosticPanel } from "@/components/diagnostic-panel";
+import { diagnosticCode, type DiagnosticCode } from "@/lib/diagnostics";
 import { useEffect, useRef, useState } from "react";
 import type { AnalyzeResult } from "@/lib/apk-analyzer/analyze";
 import { AnalysisController } from "@/lib/apk-analyzer/client";
@@ -71,7 +73,7 @@ export function ApkAnalyzer() {
   const [fileLabel, setFileLabel] = useState<string | null>(null);
   const [stage, setStage] = useState("Idle");
   const busy = stage === "Reading" || stage === "Analyzing";
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DiagnosticCode | null>(null);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -109,8 +111,8 @@ export function ApkAnalyzer() {
         setStage("Completed");
         trackToolEvent("apk_aab_analyzer", "succeeded");
       },
-      failure: (message) => {
-        setError(message);
+      failure: (_message, code) => {
+        setError(diagnosticCode(code));
         setStage("Failed");
         trackToolEvent("apk_aab_analyzer", "failed");
       },
@@ -166,7 +168,7 @@ export function ApkAnalyzer() {
       </label>
 
       <div aria-live="polite" className="min-h-5 text-sm">
-        {error && <span className="text-red-400">{error}</span>}
+        {error && <span className="text-red-400">Failed</span>}
         {!error && (
           <span className="text-mute">
             {stage !== "Idle" && `${stage}${busy ? "…" : ""}`}
@@ -187,6 +189,7 @@ export function ApkAnalyzer() {
         )}
       </div>
 
+      {error && <DiagnosticPanel code={error} tool="apk_aab_analyzer" />}
       {result && (
         <div className="flex flex-col gap-6">
           {/* File-level info */}
@@ -223,6 +226,15 @@ export function ApkAnalyzer() {
               ))}
             </ul>
           )}
+
+          {result.diagnosticCodes?.map((code) => (
+            <DiagnosticPanel
+              key={code}
+              code={code}
+              tool="apk_aab_analyzer"
+              warning
+            />
+          ))}
 
           {/* Manifest */}
           {result.format === "apk" && (
