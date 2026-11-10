@@ -210,3 +210,25 @@ test("worker diagnostic arrays are reconstructed as fixed codes", () => {
   } as MessageEvent);
   assert.deepEqual(codes, ["manifest-invalid", "unexpected"]);
 });
+
+test("unsupported file selections get package guidance rather than credential advice", () => {
+  let code = "";
+  let message = "";
+  let created = false;
+  const c = new AnalysisController(() => {
+    created = true;
+    return new FakeWorker();
+  });
+  c.start(new File(["x"], "not-a-package.pdf"), {
+    progress: () => {},
+    success: () => assert.fail(),
+    failure: (text, value) => {
+      message = text;
+      code = value ?? "";
+    },
+  });
+  assert.equal(code, "package-input-invalid");
+  assert.equal(created, false);
+  assert.match(message, /APK|AAB/);
+  assert.doesNotMatch(message, /service.account|credentials/i);
+});

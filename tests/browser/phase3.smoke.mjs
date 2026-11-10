@@ -233,6 +233,18 @@ try {
       /da:63:19:48:7b:13:4e:a4:a6:7d:55:4c:0d:ee:bb:53:7e:11:b6:64:42:47:9e:f3:1c:08:7c:da:e6:1a:7b:1d/,
     );
   }
+  await page.goto(`${base}/apk-aab-analyzer`);
+  await page
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "synthetic.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("not a package"),
+    });
+  await page
+    .locator("section[role=alert]")
+    .getByRole("heading", { name: "Select an APK or AAB" })
+    .waitFor();
   assert.deepEqual(errors, []);
   assert.equal(
     requests.some((url) => /fonts\.(googleapis|gstatic)\.com/.test(url)),

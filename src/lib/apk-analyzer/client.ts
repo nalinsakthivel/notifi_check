@@ -64,7 +64,7 @@ export class AnalysisController {
         );
       if (!/\.(apk|aab)$/i.test(file.name))
         throw new DiagnosticError(
-          "input-invalid",
+          "package-input-invalid",
           "Select a .apk or .aab file.",
         );
     } catch (e) {

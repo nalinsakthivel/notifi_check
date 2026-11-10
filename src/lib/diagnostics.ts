@@ -65,6 +65,11 @@ export const DIAGNOSTICS = {
     "Could not complete the operation",
     "Retry only after checking the tool configuration and provider logs. For push requests, acceptance or delivery may be unknown. Report this safe diagnostic if the problem persists.",
   ],
+  "package-input-invalid": [
+    "Input",
+    "Select an APK or AAB",
+    "Choose an original .apk or .aab file exported by Android tooling. Other file types are not supported; renaming a generic ZIP does not make it an Android package. Files remain on this device.",
+  ],
   "package-invalid": [
     "Archive",
     "Archive is malformed or corrupt",
