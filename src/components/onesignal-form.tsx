@@ -1,4 +1,7 @@
 "use client";
+import { DiagnosticPanel } from "@/components/diagnostic-panel";
+import { requestPush } from "@/lib/push-response";
+import type { DiagnosticCode } from "@/lib/diagnostics";
 
 import { FormEvent, useState } from "react";
 import { trackToolEvent } from "@/lib/tool-analytics";
@@ -7,14 +10,12 @@ type Result =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "success"; notificationId?: string }
-  | { status: "error"; error: string; errorCode?: string; httpStatus?: number };
-
-interface OneSignalApiResponse {
-  success: boolean;
-  notificationId?: string;
-  error?: string;
-  errorCode?: string;
-}
+  | {
+      status: "error";
+      diagnosticCode: DiagnosticCode;
+      appStatus?: number;
+      providerStatus?: number;
+    };
 
 const fieldClass =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent placeholder:text-mute/60";
@@ -24,52 +25,47 @@ export function OneSignalForm() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const tool = "onesignal";
     setResult({ status: "loading" });
-    trackToolEvent("push_notification_tester", "started", "onesignal");
-
+    trackToolEvent("push_notification_tester", "started", tool);
     const formEl = e.currentTarget;
-    const form = new FormData(formEl);
-
     try {
-      const res = await fetch("/api/notifications/onesignal/send", {
-        method: "POST",
-        body: form,
-      });
-      const json = (await res.json()) as OneSignalApiResponse;
-
-      formEl.reset();
-
-      if (!res.ok || !json.success) {
-        trackToolEvent("push_notification_tester", "failed", "onesignal");
+      const response = await requestPush(new FormData(formEl), tool);
+      if (response.success) {
         setResult({
-          status: "error",
-          error: json.error || `Request failed with HTTP ${res.status}`,
-          errorCode: json.errorCode,
-          httpStatus: res.status,
+          status: "success",
+          notificationId: response.notificationId,
         });
-        return;
+        trackToolEvent("push_notification_tester", "succeeded", tool);
+      } else {
+        setResult({ ...response, status: "error" });
+        trackToolEvent("push_notification_tester", "failed", tool);
       }
-
-      trackToolEvent("push_notification_tester", "succeeded", "onesignal");
-      setResult({ status: "success", notificationId: json.notificationId });
-    } catch (rawErr: unknown) {
+    } finally {
       formEl.reset();
-      trackToolEvent("push_notification_tester", "failed", "onesignal");
-      const message = rawErr instanceof Error ? rawErr.message : String(rawErr);
-      setResult({ status: "error", error: message });
     }
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-md border border-border bg-panel p-6"
+      aria-busy={result.status === "loading"}
+      className="min-w-0 wrap-anywhere flex flex-col gap-4 rounded-md border border-border bg-panel p-6"
     >
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="OneSignal App ID">
-          <input type="text" name="appId" required placeholder="App ID" className={fieldClass} />
+          <input
+            type="text"
+            name="appId"
+            required
+            placeholder="App ID"
+            className={fieldClass}
+          />
         </Field>
-        <Field label="REST API Key" hint="Never stored — used once, then discarded.">
+        <Field
+          label="REST API Key"
+          hint="Never stored — used once, then discarded."
+        >
           <input
             type="password"
             name="restApiKey"
@@ -90,7 +86,7 @@ export function OneSignalForm() {
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Title">
           <input
             type="text"
@@ -112,7 +108,12 @@ export function OneSignalForm() {
       </div>
 
       <Field label="Launch URL (optional)">
-        <input type="url" name="url" placeholder="https://example.com" className={fieldClass} />
+        <input
+          type="url"
+          name="url"
+          placeholder="https://example.com"
+          className={fieldClass}
+        />
       </Field>
 
       <Field
@@ -136,24 +137,31 @@ export function OneSignalForm() {
       </button>
 
       {result.status === "success" && (
-        <div className="rounded-md border border-live/40 bg-live/5 px-4 py-3 text-sm text-live">
-          <p className="tracking-wide">[OK] SENT SUCCESSFULLY</p>
+        <div
+          role="status"
+          className="rounded-md border border-live/40 bg-live/5 px-4 py-3 text-sm text-live"
+        >
+          <p className="tracking-wide">[OK] PROVIDER ACCEPTED</p>
+          <p className="mt-2 text-xs">
+            Provider acceptance does not confirm device delivery. Check the
+            subscription, device permissions and provider delivery report.
+          </p>
           {result.notificationId && (
-            <p className="mt-1 break-all font-mono text-xs text-live/80">{result.notificationId}</p>
+            <p className="mt-1 break-all font-mono text-xs text-live/80">
+              {result.notificationId}
+            </p>
           )}
         </div>
       )}
 
       {result.status === "error" && (
-        <div className="rounded-md border border-red-500/40 bg-red-500/5 px-4 py-3 text-sm text-red-400">
-          <p className="tracking-wide">
-            [FAIL] SEND FAILED{result.httpStatus ? ` (HTTP ${result.httpStatus})` : ""}
-          </p>
-          {result.errorCode && (
-            <p className="mt-1 font-mono text-xs text-red-400/80">{result.errorCode}</p>
-          )}
-          <p className="mt-1 whitespace-pre-wrap text-red-400/80">{result.error}</p>
-        </div>
+        <DiagnosticPanel
+          key={result.diagnosticCode}
+          tool={"onesignal"}
+          code={result.diagnosticCode}
+          appStatus={result.appStatus}
+          providerStatus={result.providerStatus}
+        />
       )}
     </form>
   );
@@ -170,7 +178,9 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-xs tracking-widest text-mute">{label.toUpperCase()}</span>
+      <span className="text-xs tracking-widest text-mute">
+        {label.toUpperCase()}
+      </span>
       {children}
       {hint && <span className="text-xs text-mute/70">{hint}</span>}
     </label>

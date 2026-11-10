@@ -1,3 +1,4 @@
+import { DiagnosticError } from "../diagnostics.ts";
 // Bounded subset of Android ResourceTypes.h binary XML. Resource references
 // stay unresolved: this parser does not have resources.arsc resolution.
 export interface AxmlAttribute {
@@ -12,7 +13,8 @@ export interface AxmlElement {
   children: AxmlElement[];
 }
 const bad = (): never => {
-  throw new Error(
+  throw new DiagnosticError(
+    "manifest-invalid",
     "Malformed or unsupported Android binary XML (AXML). Rebuild the APK with standard Android tooling.",
   );
 };

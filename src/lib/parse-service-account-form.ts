@@ -1,5 +1,9 @@
 import type { ServiceAccount } from "firebase-admin/app";
-import { MAX_CREDENTIAL_BYTES, checkRequestSize, InputError } from "./notification-validation";
+import {
+  MAX_CREDENTIAL_BYTES,
+  readNotificationForm,
+  InputError,
+} from "./notification-validation.ts";
 
 export class BadRequestError extends InputError {}
 
@@ -10,17 +14,22 @@ interface RawServiceAccountJson {
 }
 
 export async function parseServiceAccountForm(
-  request: Request
+  request: Request,
 ): Promise<{ serviceAccount: ServiceAccount; fields: Record<string, string> }> {
-  checkRequestSize(request);
-  const form = await request.formData();
+  const form = await readNotificationForm(request);
   const file = form.get("serviceAccount");
 
   if (!(file instanceof File)) {
-    throw new BadRequestError("Missing required file field: serviceAccount (Firebase service account JSON).");
+    throw new BadRequestError(
+      "Missing required file field: serviceAccount (Firebase service account JSON).",
+    );
   }
 
-  if (file.size > MAX_CREDENTIAL_BYTES) throw new BadRequestError("Service account file exceeds 64 KB.");
+  if (file.size > MAX_CREDENTIAL_BYTES)
+    throw new BadRequestError(
+      "Service account file exceeds 64 KB.",
+      "request-too-large",
+    );
   let parsed: RawServiceAccountJson;
   try {
     parsed = JSON.parse(await file.text()) as RawServiceAccountJson;
@@ -28,11 +37,18 @@ export async function parseServiceAccountForm(
     throw new BadRequestError("serviceAccount file is not valid JSON.");
   }
 
-  if (!parsed || typeof parsed !== "object" ||
-      typeof parsed.project_id !== "string" || typeof parsed.private_key !== "string" || typeof parsed.client_email !== "string" ||
-      !parsed.project_id || !parsed.private_key || !parsed.client_email) {
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    typeof parsed.project_id !== "string" ||
+    typeof parsed.private_key !== "string" ||
+    typeof parsed.client_email !== "string" ||
+    !parsed.project_id ||
+    !parsed.private_key ||
+    !parsed.client_email
+  ) {
     throw new BadRequestError(
-      "serviceAccount JSON is missing required fields (project_id, private_key, client_email)."
+      "serviceAccount JSON is missing required fields (project_id, private_key, client_email).",
     );
   }
 

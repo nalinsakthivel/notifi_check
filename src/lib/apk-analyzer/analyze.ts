@@ -1,3 +1,4 @@
+import { DiagnosticError, type DiagnosticCode } from "../diagnostics.ts";
 import { readSigningBlock } from "./signing-block.ts";
 import { readArchive } from "./archive.ts";
 import type { AnalysisLimits } from "./limits.ts";
@@ -19,6 +20,7 @@ export interface AnalyzeResult {
   manifestUnsupportedReason: string | null;
   signature: SignatureInfo | null;
   warnings: string[];
+  diagnosticCodes: DiagnosticCode[];
 }
 
 function detectFormat(paths: string[]): PackageFormat {
@@ -59,6 +61,7 @@ export async function analyzePackage(
   );
   progress?.("Analyzing");
   const warnings: string[] = [];
+  const diagnosticCodes: DiagnosticCode[] = [];
   const allEntries = archive.entries;
   const paths = allEntries.map((e) => e.path);
   const format = detectFormat(paths);
@@ -67,7 +70,10 @@ export async function analyzePackage(
       ? paths.filter((p) => /^META-INF\/[^/]+\.(RSA|DSA|EC)$/i.test(p))
       : [];
   if (sigCandidates.length > 64)
-    throw new Error("Too many signature entries: the safety limit is 64.");
+    throw new DiagnosticError(
+      "package-limit",
+      "Too many signature entries: the safety limit is 64.",
+    );
   const wantedNames = new Set([
     ...sigCandidates,
     ...(format === "apk" ? ["AndroidManifest.xml"] : []),
@@ -80,6 +86,7 @@ export async function analyzePackage(
     warnings.push(
       "No AndroidManifest.xml found at the ZIP root; this may not be an APK.",
     );
+  if (format === "unknown") diagnosticCodes.push("manifest-missing");
   const sizeBreakdown = buildSizeBreakdown(allEntries);
   const totalSize = allEntries.reduce((sum, e) => sum + e.uncompressedSize, 0);
 
@@ -91,6 +98,7 @@ export async function analyzePackage(
       try {
         manifest = parseApkManifest(manifestBytes);
       } catch {
+        diagnosticCodes.push("manifest-invalid");
         warnings.push(
           "AndroidManifest.xml could not be parsed — showing partial results.",
         );
@@ -99,6 +107,7 @@ export async function analyzePackage(
       warnings.push("No AndroidManifest.xml found at the ZIP root.");
     }
   } else if (format === "aab") {
+    diagnosticCodes.push("aab-manifest-unsupported");
     manifestUnsupportedReason =
       "AAB manifest parsing (package name, version, permissions) is not yet supported — " +
       "the manifest is stored as protobuf (aapt2's Resources.proto format), a larger and " +
@@ -144,5 +153,6 @@ export async function analyzePackage(
     manifestUnsupportedReason,
     signature,
     warnings,
+    diagnosticCodes,
   };
 }

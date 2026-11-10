@@ -1,3 +1,4 @@
+import { errorDiagnostic, DIAGNOSTICS } from "../diagnostics.ts";
 import { analyzePackage } from "./analyze.ts";
 import type { AnalysisLimits } from "./limits.ts";
 // File structured cloning retains browser-backed bytes. No upload, whole-file
@@ -24,10 +25,8 @@ scope.onmessage = async ({ data: { id, file, limits } }) => {
     scope.postMessage({
       id,
       type: "error",
-      error:
-        e instanceof Error
-          ? e.message
-          : "Could not analyze this APK/AAB. Export a fresh package and retry.",
+      diagnosticCode: errorDiagnostic(e),
+      error: DIAGNOSTICS[errorDiagnostic(e)][1],
     });
   }
 };

@@ -1,3 +1,4 @@
+import type { DiagnosticCode } from "./diagnostics.ts";
 export interface FCMMessagePayload {
   fcmToken: string;
   title: string;
@@ -18,4 +19,6 @@ export interface FCMResponse {
   validated?: boolean;
   error?: string;
   errorCode?: string;
+  diagnosticCode?: DiagnosticCode;
+  providerStatus?: number;
 }

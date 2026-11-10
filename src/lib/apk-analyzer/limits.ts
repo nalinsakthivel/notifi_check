@@ -1,3 +1,4 @@
+import { DiagnosticError } from "../diagnostics.ts";
 export interface AnalysisLimits {
   maxFileBytes: number;
   maxEntries: number;
@@ -28,7 +29,8 @@ export function analysisLimits(
       value <= 0 ||
       value > DEFAULT_LIMITS[key as keyof AnalysisLimits]
     )
-      throw new Error(
+      throw new DiagnosticError(
+        "package-limit",
         `Invalid ${key}: limits must be positive integers no greater than the safe default.`,
       );
   }
